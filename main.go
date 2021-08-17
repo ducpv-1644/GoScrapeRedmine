@@ -5,8 +5,6 @@ import (
 	"go-scrape-redmine/models"
 	"go-scrape-redmine/server"
 	"sync"
-
-
 )
 
 const num_workers = 1
