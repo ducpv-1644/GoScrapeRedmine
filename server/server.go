@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"sync"
         "go-scrape-redmine/server/handler"
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
 )
 
