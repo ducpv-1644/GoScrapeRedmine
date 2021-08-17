@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  database:
+    image: postgres:12
+    container_name: database
+    environment:
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - type: volume
+        source: dbdata
+        target: /var/lib/postgresql/data
+    ports:
+      - 5432:5432
+volumes:
+  dbdata:
