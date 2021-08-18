@@ -67,30 +67,6 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handle
                 resp.Code = http.StatusNonAuthoritativeInfo
                 resp.Message = "Not Authorized!"
                 RespondWithJSON(w, resp.Code, resp)
-
-                // if r.Header["Token"] != nil {
-                //         token, err := jwt.Parse(r.Header["Token"][0], func(token *jwt.Token) (interface{}, error) {
-                //                 if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-                //                         return nil, fmt.Errorf("Token invalid!")
-                //                 }
-                //                 return mySigningKey, nil
-                //         })
-
-                //         if err != nil {
-                //                 resp.Code = http.StatusBadRequest
-                //                 resp.Message = err.Error()
-                //                 RespondWithJSON(w, resp.Code, resp)
-                //                 return
-                //         }
-                //         if token.Valid {
-                //                 endpoint(w, r)
-                //                 return
-                //         }
-                // } else {
-                //         resp.Code = http.StatusNonAuthoritativeInfo
-                //         resp.Message = "Not Authorized!"
-                //         RespondWithJSON(w, resp.Code, resp)
-                // }
         })
 }
 
