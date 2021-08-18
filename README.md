@@ -11,3 +11,11 @@
         "role": "admin" // free string
     }
     ```
+- POST: /signin
+  - Body example:
+   ```json
+    {
+        "email": "phamvana@gmail.com",
+        "password": "password",
+    }
+    ```
