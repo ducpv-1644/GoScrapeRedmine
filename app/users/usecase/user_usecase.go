@@ -24,6 +24,7 @@ func (usecase *userUsecase) FindUserByEmail(db *gorm.DB, email string) (models.U
 	return user
 }
 
-func (usecase *userUsecase) CreateUser(db *gorm.DB, user models.User) {
-	usecase.userRepository.CreateUser(db, user)
+func (usecase *userUsecase) CreateUser(db *gorm.DB, user models.User) (models.User){
+	userCreated := usecase.userRepository.CreateUser(db, user)
+	return userCreated
 }

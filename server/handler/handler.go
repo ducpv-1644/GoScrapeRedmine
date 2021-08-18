@@ -2,13 +2,16 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"go-scrape-redmine/app/users"
 	userRepository "go-scrape-redmine/app/users/repository"
 	userUsecase "go-scrape-redmine/app/users/usecase"
 	"go-scrape-redmine/config"
 	"go-scrape-redmine/models"
 	"net/http"
+	"time"
 
+	"github.com/golang-jwt/jwt"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -35,6 +38,30 @@ func generatehashPassword(password string) (string, error) {
 	return string(bytes), err
 }
 
+func generateJWT(email, role string) (string, error) {
+	var mySigningKey = []byte("unicorns")
+	token := jwt.New(jwt.SigningMethodHS256)
+	claims := token.Claims.(jwt.MapClaims)
+
+	claims["authorized"] = true
+	claims["email"] = email
+	claims["role"] = role
+	claims["exp"] = time.Now().Add(time.Minute * 30).Unix()
+
+	tokenString, err := token.SignedString(mySigningKey)
+
+	if err != nil {
+		fmt.Errorf("Something Went Wrong: %s", err.Error())
+		return "", err
+	}
+	return tokenString, nil
+}
+
+func checkPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
+
 func (a *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	resp := response{}
 	db := config.DBConnect()
@@ -49,8 +76,6 @@ func (a *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dbuser := newUserUsecase().FindUserByEmail(db, user.Email)
-
-	//checks if email is already register or not
 	if dbuser.Email != "" {
 		resp.Code = http.StatusBadRequest
 		resp.Message = "Email already in use!"
@@ -66,7 +91,43 @@ func (a *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newUserUsecase().CreateUser(db, user)
+	userCreated := newUserUsecase().CreateUser(db, user)
+	respondWithJSON(w, http.StatusOK, userCreated)
+}
 
-	respondWithJSON(w, http.StatusOK, user)
+func (a *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
+	resp := response{}
+	db := config.DBConnect()
+
+	var authdetails models.Authentication
+	err := json.NewDecoder(r.Body).Decode(&authdetails)
+	if err != nil {
+		resp.Code = http.StatusBadRequest
+		resp.Message = err.Error()
+		respondWithJSON(w, resp.Code, resp)
+		return
+	}
+
+	authuser := newUserUsecase().FindUserByEmail(db, authdetails.Email)
+	passwordOK := checkPasswordHash(authdetails.Password, authuser.Password)
+	if !passwordOK || authuser.Email == "" {
+		resp.Code = http.StatusBadRequest
+		resp.Message = "Username or Password is incorrect"
+		respondWithJSON(w, resp.Code, resp)
+		return
+	}
+
+	validToken, err := generateJWT(authuser.Email, authuser.Role)
+	if err != nil {
+		resp.Code = http.StatusBadRequest
+		resp.Message = "Failed to generate token"
+		respondWithJSON(w, resp.Code, resp)
+		return
+	}
+
+	var token models.Token
+	token.Email = authuser.Email
+	token.Role = authuser.Role
+	token.TokenString = validToken
+	respondWithJSON(w, http.StatusOK, token)
 }

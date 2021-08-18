@@ -19,6 +19,7 @@ func (*UserRepository) FindUserByEmail(db *gorm.DB, email string) (models.User){
 	return dbuser
 }
 
-func (*UserRepository) CreateUser(db *gorm.DB, user models.User){
+func (*UserRepository) CreateUser(db *gorm.DB, user models.User) (models.User){
 	db.Create(&user)
+	return user
 }
