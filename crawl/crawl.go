@@ -1,51 +1,28 @@
 package crawl
 
 import (
-	"encoding/csv"
 	"fmt"
-	"log"
+	"go-scrape-redmine/models"
 	"net/http"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/gocolly/colly"
+	"gorm.io/gorm"
 )
 
-func SaveFile(file string, data string) {
-	fileName := file
-	files, err := os.Create(fileName)
-	if err != nil {
-		log.Fatalf("Could not create %s", fileName)
-	}
-	defer files.Close()
-	writer := csv.NewWriter(files)
-	defer writer.Flush()
-	writer.Write([]string{data})
-}
-
-func Crawl(wg *sync.WaitGroup) {
-
-	url := "https://dev.sun-asterisk.com/projects/digmee-lab/issues?set_filter=1&tracker_id=4"
-	url1 := "https://dev.sun-asterisk.com/projects"
-	fileName := "redmine.csv"
-	files, err := os.Create(fileName)
-	if err != nil {
-		log.Fatalf("Could not create %s", fileName)
-	}
-	defer files.Close()
-	writer := csv.NewWriter(files)
-	defer writer.Flush()
+func InitColly(url string) *colly.Collector {
 	c := colly.NewCollector(
-		colly.AllowedDomains("dev.sun-asterisk.com"),
+		colly.AllowedDomains(os.Getenv("DOMAIN")),
 	)
 	c.SetRequestTimeout(400 * time.Second)
 	var cookies []*http.Cookie
 	cookie := &http.Cookie{
 		Name:     "_session_id",
-		Value:    "null",
+		Value:    os.Getenv("VALUE"),
 		Path:     "/",
-		Domain:   "dev.sun-asterisk.com",
+		Domain:   os.Getenv("DOMAIN"),
 		Secure:   true,
 		HttpOnly: true,
 	}
@@ -53,19 +30,32 @@ func Crawl(wg *sync.WaitGroup) {
 
 	if err := c.SetCookies(url, cookies); err != nil {
 		fmt.Println("Errors: have errors from cookies", err)
-		return
+
 	}
+	return c
+}
+
+func CrawlProject(wg *sync.WaitGroup, c *colly.Collector, db *gorm.DB) {
 
 	c.OnRequest(func(r *colly.Request) {
 		fmt.Println("Visiting", r.URL)
 	})
 
-	// lấy được project
-	c.OnHTML("div.root", func(e *colly.HTMLElement) {
-		a, _ := e.DOM.Html()
-		fmt.Println(a)
+	go c.OnHTML("div.root", func(e *colly.HTMLElement) {
 
+		text := e.ChildText("a")
+		href := e.ChildAttr(".project", "href")
+		project := models.Project{
+			Name:   text,
+			Prefix: href,
+		}
+		var dbProejct models.Project
+		db.Where("name = ?", project.Name).First(&dbProejct)
+		if dbProejct.Name == "" {
+			db.Create(&project)
+		}
 	})
-	c.Visit(url1)
 
+	c.Visit(os.Getenv("HOMEPAGE" + "/projects"))
+	fmt.Println("crwal project done")
 }

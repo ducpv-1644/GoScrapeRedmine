@@ -3,23 +3,23 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/golang-jwt/jwt"
+	"github.com/gorilla/mux"
+	"go-scrape-redmine/server/handler"
 	"net/http"
 	"sync"
-        "go-scrape-redmine/server/handler"
-	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/gorilla/mux"
 )
 
 type response struct {
-        Code    int  `json:"code"`
-        Message string `json:"message"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 }
 
 func handlerx(w http.ResponseWriter, r *http.Request) {
-        resp := response{}
-        resp.Code = http.StatusOK
-        resp.Message = "Hello World!"
-        RespondWithJSON(w, resp.Code, resp)
+	resp := response{}
+	resp.Code = http.StatusOK
+	resp.Message = "Hello World!"
+	RespondWithJSON(w, resp.Code, resp)
 }
 
 var mySigningKey = []byte("unicorns")
@@ -33,41 +33,52 @@ func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handler {
 	resp := response{}
 
-        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-                if r.Header["Token"] != nil {
-                        token, err := jwt.Parse(r.Header["Token"][0], func(token *jwt.Token) (interface{}, error) {
-                                if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-                                        return nil, fmt.Errorf("Token invalid!")
-                                }
-                                return mySigningKey, nil
-                        })
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header["Token"] == nil {
+			resp.Code = http.StatusBadRequest
+			resp.Message = "No Token Found"
+			RespondWithJSON(w, resp.Code, resp)
+			return
+		}
+		token, err := jwt.Parse(r.Header["Token"][0], func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("Token invalid!")
+			}
+			return mySigningKey, nil
+		})
+		if err != nil {
+			resp.Code = http.StatusBadRequest
+			resp.Message = "Your Token has been expired"
+			RespondWithJSON(w, resp.Code, resp)
+			return
+		}
+		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+			if claims["role"] == "admin" {
+				r.Header.Set("Role", "admin")
+				endpoint(w, r)
+				return
 
-                        if err != nil {
-                                resp.Code = http.StatusBadRequest
-                                resp.Message = err.Error()
-                                RespondWithJSON(w, resp.Code, resp)
-                                return
-                        }
-                        if token.Valid {
-                                endpoint(w, r)
-                                return
-                        }
-                } else {
-                        resp.Code = http.StatusNonAuthoritativeInfo
-                        resp.Message = "Not Authorized!"
-                        RespondWithJSON(w, resp.Code, resp)
-                }
-        })
+			} else if claims["role"] == "user" {
+				r.Header.Set("Role", "user")
+				endpoint(w, r)
+				return
+			}
+		}
+		resp.Code = http.StatusNonAuthoritativeInfo
+		resp.Message = "Not Authorized!"
+		RespondWithJSON(w, resp.Code, resp)
+	})
 }
 
 func Run(wg *sync.WaitGroup) {
-        router := mux.NewRouter()
-        user_handler := handler.UserHandler{}
-        defer wg.Done()
+	router := mux.NewRouter()
+	user_handler := handler.UserHandler{}
+	defer wg.Done()
 
-        router.Handle("/", isAuthorized(handlerx)).Methods("GET")
-        router.HandleFunc("/signup", user_handler.SignUp).Methods("POST")
+	router.Handle("/", isAuthorized(handlerx)).Methods("GET")
+	router.HandleFunc("/signup", user_handler.SignUp).Methods("POST")
+	router.HandleFunc("/signin", user_handler.SignIn).Methods("POST")
 
-        fmt.Println("Server started port 8000!")
-        http.ListenAndServe(":8000", router)
+	fmt.Println("Server started port 8000!")
+	http.ListenAndServe(":8000", router)
 }

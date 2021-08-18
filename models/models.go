@@ -23,6 +23,13 @@ type Token struct {
 	TokenString string `json:"token"`
 }
 
+type Project struct {
+	gorm.Model
+	Name   string `json:"name"`
+	Prefix string `json:"prefix`
+}
+
 func DBMigrate(db *gorm.DB) {
 	db.AutoMigrate(&User{})
+	db.AutoMigrate(&Project{})
 }

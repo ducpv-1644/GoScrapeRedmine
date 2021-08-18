@@ -8,5 +8,5 @@ import (
 
 type Usecase interface {
 	FindUserByEmail(db *gorm.DB, email string) (models.User)
-	CreateUser(db *gorm.DB, user models.User)
+	CreateUser(db *gorm.DB, user models.User) (models.User)
 }
