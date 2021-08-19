@@ -6,10 +6,12 @@ import (
 	"go-scrape-redmine/models"
 	"go-scrape-redmine/server"
 	"sync"
+
 	"github.com/robfig/cron/v3"
 )
 
 const num_workers = 1
+
 func main() {
 	var wg sync.WaitGroup
 	wg.Add(num_workers)

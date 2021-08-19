@@ -18,8 +18,8 @@ import (
 
 type UserHandler struct{}
 type response struct {
-        Code    int  `json:"code"`
-        Message string `json:"message"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 }
 
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
@@ -131,6 +131,35 @@ func (a *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	token.Role = authuser.Role
 	token.TokenString = validToken
 	respondWithJSON(w, http.StatusOK, token)
+}
+
+func (a *UserHandler) GetActivity(w http.ResponseWriter, r *http.Request) {
+	resp := response{}
+	db := config.DBConnect()
+
+	memberID := r.URL.Query().Get("member_id")
+	date := r.URL.Query().Get("date")
+	filter := r.URL.Query().Get("filter")
+
+	if memberID == "" || date == "" {
+		resp.Code = http.StatusBadRequest
+		resp.Message = "Member id or date is requied"
+		respondWithJSON(w, resp.Code, resp)
+		return
+	}
+	var user []models.Activity
+	if filter == "user" {
+		db.Where("date = ? ", date).Find(&user)
+	} else if filter == "date" {
+		db.Where("date = ? AND member_id = ?", date, memberID).Find(&user)
+	} else {
+		resp.Code = http.StatusBadRequest
+		resp.Message = "filter invalid"
+		respondWithJSON(w, resp.Code, resp)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, user)
 }
 
 func (a *UserHandler) CrawRedmineData(w http.ResponseWriter, r *http.Request) {
