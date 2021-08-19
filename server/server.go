@@ -75,12 +75,11 @@ func Run(wg *sync.WaitGroup) {
 	router := mux.NewRouter()
 	user_handler := handler.UserHandler{}
 	defer wg.Done()
-
 	router.Handle("/", isAuthorized(handlerx)).Methods("GET")
 	router.HandleFunc("/signup", user_handler.SignUp).Methods("POST")
 	router.HandleFunc("/signin", user_handler.SignIn).Methods("POST")
+	router.Handle("/activity", isAuthorized(user_handler.GetActivity)).Methods("GET")
 	router.Handle("/crawl", isAuthorized(user_handler.CrawRedmineData)).Methods("POST")
-
 	fmt.Println("Server started port 8000!")
 	http.ListenAndServe(":8000", router)
 }
