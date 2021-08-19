@@ -2,10 +2,10 @@ package crawl
 
 import (
 	"fmt"
+	"go-scrape-redmine/config"
 	"go-scrape-redmine/models"
 	"net/http"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/gocolly/colly"
@@ -35,13 +35,13 @@ func InitColly(url string) *colly.Collector {
 	return c
 }
 
-func CrawlProject(wg *sync.WaitGroup, c *colly.Collector, db *gorm.DB) {
+func CrawlProject(c *colly.Collector, db *gorm.DB) {
 
 	c.OnRequest(func(r *colly.Request) {
 		fmt.Println("Visiting", r.URL)
 	})
 
-	go c.OnHTML("a.project", func(e *colly.HTMLElement) {
+	c.OnHTML("a.project", func(e *colly.HTMLElement) {
 
 		text := e.Text
 		href := e.Attr("href")
@@ -49,6 +49,7 @@ func CrawlProject(wg *sync.WaitGroup, c *colly.Collector, db *gorm.DB) {
 			Name:   text,
 			Prefix: href,
 		}
+		fmt.Println(project)
 		var dbProejct models.Project
 		db.Where("name = ?", project.Name).First(&dbProejct)
 		if dbProejct.Name == "" {
@@ -57,5 +58,12 @@ func CrawlProject(wg *sync.WaitGroup, c *colly.Collector, db *gorm.DB) {
 	})
 
 	c.Visit(os.Getenv("HOMEPAGE") + "/projects")
-	fmt.Println("crwal project done")
+	fmt.Println("Crwal project data finished.")
+}
+
+func CrawlData() {
+	fmt.Println("Cron running...crawling data.")
+	db := config.DBConnect()
+	c := InitColly(os.Getenv("HOMEPAGE"))
+	go CrawlProject(c, db)
 }
