@@ -49,7 +49,6 @@ func CrawlProject(c *colly.Collector, db *gorm.DB) {
 			Name:   text,
 			Prefix: href,
 		}
-		fmt.Println(project)
 		var dbProejct models.Project
 		db.Where("name = ?", project.Name).First(&dbProejct)
 		if dbProejct.Name == "" {

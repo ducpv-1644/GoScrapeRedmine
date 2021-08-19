@@ -7,6 +7,7 @@ import (
 	userRepository "go-scrape-redmine/app/users/repository"
 	userUsecase "go-scrape-redmine/app/users/usecase"
 	"go-scrape-redmine/config"
+	"go-scrape-redmine/crawl"
 	"go-scrape-redmine/models"
 	"net/http"
 	"time"
@@ -130,4 +131,13 @@ func (a *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	token.Role = authuser.Role
 	token.TokenString = validToken
 	respondWithJSON(w, http.StatusOK, token)
+}
+
+func (a *UserHandler) CrawRedmineData(w http.ResponseWriter, r *http.Request) {
+	resp := response{}
+	crawl.CrawlData()
+
+	resp.Code = http.StatusOK
+	resp.Message = "Request crawl redmine data finished."
+	respondWithJSON(w, resp.Code, resp)
 }
