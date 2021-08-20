@@ -6,8 +6,8 @@ import (
 	"go-scrape-redmine/app/users"
 	userRepository "go-scrape-redmine/app/users/repository"
 	userUsecase "go-scrape-redmine/app/users/usecase"
+	Redmine "go-scrape-redmine/crawl/redmine"
 	"go-scrape-redmine/config"
-	"go-scrape-redmine/crawl"
 	"go-scrape-redmine/models"
 	"net/http"
 	"time"
@@ -22,7 +22,7 @@ type response struct {
 	Message string `json:"message"`
 }
 
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(payload)
@@ -72,7 +72,7 @@ func (a *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		resp.Code = http.StatusBadRequest
 		resp.Message = err.Error()
-		respondWithJSON(w, resp.Code, resp)
+		RespondWithJSON(w, resp.Code, resp)
 		return
 	}
 
@@ -80,7 +80,7 @@ func (a *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	if dbuser.Email != "" {
 		resp.Code = http.StatusBadRequest
 		resp.Message = "Email already in use!"
-		respondWithJSON(w, resp.Code, resp)
+		RespondWithJSON(w, resp.Code, resp)
 		return
 	}
 
@@ -88,12 +88,12 @@ func (a *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		resp.Code = http.StatusBadRequest
 		resp.Message = "error in password hash!"
-		respondWithJSON(w, resp.Code, resp)
+		RespondWithJSON(w, resp.Code, resp)
 		return
 	}
 
 	userCreated := newUserUsecase().CreateUser(db, user)
-	respondWithJSON(w, http.StatusOK, userCreated)
+	RespondWithJSON(w, http.StatusOK, userCreated)
 }
 
 func (a *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
@@ -105,7 +105,7 @@ func (a *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		resp.Code = http.StatusBadRequest
 		resp.Message = err.Error()
-		respondWithJSON(w, resp.Code, resp)
+		RespondWithJSON(w, resp.Code, resp)
 		return
 	}
 
@@ -114,7 +114,7 @@ func (a *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	if !passwordOK || authuser.Email == "" {
 		resp.Code = http.StatusBadRequest
 		resp.Message = "Username or Password is incorrect"
-		respondWithJSON(w, resp.Code, resp)
+		RespondWithJSON(w, resp.Code, resp)
 		return
 	}
 
@@ -122,7 +122,7 @@ func (a *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		resp.Code = http.StatusBadRequest
 		resp.Message = "Failed to generate token"
-		respondWithJSON(w, resp.Code, resp)
+		RespondWithJSON(w, resp.Code, resp)
 		return
 	}
 
@@ -130,43 +130,45 @@ func (a *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	token.Email = authuser.Email
 	token.Role = authuser.Role
 	token.TokenString = validToken
-	respondWithJSON(w, http.StatusOK, token)
+	RespondWithJSON(w, http.StatusOK, token)
 }
 
 func (a *UserHandler) GetActivity(w http.ResponseWriter, r *http.Request) {
 	resp := response{}
 	db := config.DBConnect()
 
-	memberID := r.URL.Query().Get("member_id")
+	memberID := r.URL.Query().Get("member")
 	date := r.URL.Query().Get("date")
 	filter := r.URL.Query().Get("filter")
 
 	if memberID == "" || date == "" {
 		resp.Code = http.StatusBadRequest
 		resp.Message = "Member id or date is requied"
-		respondWithJSON(w, resp.Code, resp)
+		RespondWithJSON(w, resp.Code, resp)
 		return
 	}
-	var user []models.Activity
+	var activity []models.Activity
 	if filter == "user" {
-		db.Where("date = ? ", date).Find(&user)
+		db.Where("member_id = ? ", memberID).Find(&activity)
 	} else if filter == "date" {
-		db.Where("date = ? AND member_id = ?", date, memberID).Find(&user)
+		db.Where("date = ? ", date).Find(&activity)
+	} else if filter == "both" {
+		db.Where("date = ? AND member_id = ?", date, memberID).Find(&activity)
 	} else {
 		resp.Code = http.StatusBadRequest
 		resp.Message = "filter invalid"
-		respondWithJSON(w, resp.Code, resp)
+		RespondWithJSON(w, resp.Code, resp)
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, user)
+	RespondWithJSON(w, http.StatusOK, activity)
 }
 
-func (a *UserHandler) CrawRedmineData(w http.ResponseWriter, r *http.Request) {
+func (a *UserHandler) CrawData(w http.ResponseWriter, r *http.Request) {
 	resp := response{}
-	crawl.CrawlData()
+	Redmine.NewRedmine().CrawlRedmine()
 
 	resp.Code = http.StatusOK
 	resp.Message = "Request crawl redmine data finished."
-	respondWithJSON(w, resp.Code, resp)
+	RespondWithJSON(w, resp.Code, resp)
 }
