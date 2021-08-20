@@ -6,8 +6,8 @@ import (
 	"go-scrape-redmine/app/users"
 	userRepository "go-scrape-redmine/app/users/repository"
 	userUsecase "go-scrape-redmine/app/users/usecase"
-	Redmine "go-scrape-redmine/crawl/redmine"
 	"go-scrape-redmine/config"
+	Redmine "go-scrape-redmine/crawl/redmine"
 	"go-scrape-redmine/models"
 	"net/http"
 	"time"
@@ -167,7 +167,6 @@ func (a *UserHandler) GetActivity(w http.ResponseWriter, r *http.Request) {
 func (a *UserHandler) CrawData(w http.ResponseWriter, r *http.Request) {
 	resp := response{}
 	Redmine.NewRedmine().CrawlRedmine()
-
 	resp.Code = http.StatusOK
 	resp.Message = "Request crawl redmine data finished."
 	RespondWithJSON(w, resp.Code, resp)

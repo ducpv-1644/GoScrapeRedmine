@@ -30,8 +30,9 @@ type Project struct {
 }
 type Member struct {
 	gorm.Model
-	MemberId   string `json:"menberid"`
-	MemberName string `json:"menbername"`
+	MemberId    string `json:"menberid"`
+	MemberName  string `json:"menbername"`
+	MemberEmail string `json:"menberemail"`
 }
 type Activity struct {
 	gorm.Model
