@@ -16,10 +16,10 @@ import (
 const num_workers = 1
 
 func main() {
+
 	config.LoadENV()
 	db := config.DBConnect()
 	models.DBMigrate(db)
-
 	var seed string
 	flag.StringVar(&seed, "seed", "none", "seed option")
 	flag.Parse()

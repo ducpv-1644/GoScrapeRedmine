@@ -10,6 +10,7 @@ import (
 	Redmine "go-scrape-redmine/crawl/redmine"
 	"go-scrape-redmine/models"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -132,7 +133,100 @@ func (a *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	token.TokenString = validToken
 	RespondWithJSON(w, http.StatusOK, token)
 }
+func weekStart(year, week int) time.Time {
+	// Start from the middle of the year:
+	t := time.Date(year, 7, 1, 0, 0, 0, 0, time.UTC)
 
+	// Roll back to Monday:
+	if wd := t.Weekday(); wd == time.Sunday {
+		t = t.AddDate(0, 0, -6)
+	} else {
+		t = t.AddDate(0, 0, -int(wd)+1)
+	}
+
+	// Difference in weeks:
+	_, w := t.ISOWeek()
+	t = t.AddDate(0, 0, (week-w)*7)
+
+	return t
+}
+
+func quarterRange(year, quarter int, member string, w http.ResponseWriter) {
+
+	var dayStart string
+	var dayEnd string
+
+	switch quarters := quarter; {
+	case quarters == 1:
+		yyyStart := strconv.Itoa(year)
+		dayStart = "01/01/" + yyyStart
+		yyyEnd := strconv.Itoa(year)
+		dayEnd = "03/31/" + yyyEnd
+	case quarters == 2:
+		yyyStart := strconv.Itoa(year)
+		dayStart = "04/01/" + yyyStart
+		yyyEnd := strconv.Itoa(year)
+		dayEnd = "06/30/" + yyyEnd
+	case quarters == 3:
+		yyyStart := strconv.Itoa(year)
+		dayStart = "07/01/" + yyyStart
+		yyyEnd := strconv.Itoa(year)
+		dayEnd = "09/30/" + yyyEnd
+	case quarters == 4:
+		yyyStart := strconv.Itoa(year)
+		dayStart = "10/01/" + yyyStart
+		yyyEnd := strconv.Itoa(year)
+		dayEnd = "12/31/" + yyyEnd
+	}
+
+	var activity []models.Activity
+	db := config.DBConnect()
+
+	db.Where("member_id = ? AND date BETWEEN ? AND ?", member, dayStart, dayEnd).Find(&activity)
+	fmt.Println("start", dayStart)
+	fmt.Println("end", dayEnd)
+	RespondWithJSON(w, http.StatusOK, activity)
+
+}
+func weekRange(year, week int, member string, w http.ResponseWriter) (start, end time.Time) {
+
+	start = weekStart(year, week)
+	end = start.AddDate(0, 0, 6)
+	ddStart := start.Day()
+	mmStart := int(start.Month())
+	yyyyStart := start.Year()
+
+	var daystart string
+
+	if ddStart < 10 {
+		daystart = strconv.Itoa(mmStart) + "/" + "0" + strconv.Itoa(ddStart) + "/" + strconv.Itoa(yyyyStart)
+	} else if mmStart < 10 {
+		daystart = "0" + strconv.Itoa(mmStart) + "/" + strconv.Itoa(ddStart) + "/" + strconv.Itoa(yyyyStart)
+	} else {
+		daystart = strconv.Itoa(mmStart) + "/" + strconv.Itoa(ddStart) + "/" + strconv.Itoa(yyyyStart)
+	}
+
+	ddEnd := end.Day()
+	mmEnd := int(end.Month())
+	yyyyEnd := end.Year()
+
+	var dayend string
+
+	if ddEnd < 10 {
+		dayend = strconv.Itoa(mmEnd) + "/" + "0" + strconv.Itoa(ddEnd) + "/" + strconv.Itoa(yyyyEnd)
+	} else if mmEnd < 10 {
+		dayend = "0" + strconv.Itoa(mmEnd) + "/" + strconv.Itoa(ddEnd) + "/" + strconv.Itoa(yyyyEnd)
+	} else {
+		dayend = strconv.Itoa(mmEnd) + "/" + strconv.Itoa(ddEnd) + "/" + strconv.Itoa(yyyyEnd)
+	}
+
+	var activity []models.Activity
+	db := config.DBConnect()
+
+	db.Where("member_id = ? AND date BETWEEN ? AND ?", member, daystart, dayend).Find(&activity)
+	RespondWithJSON(w, http.StatusOK, activity)
+	return
+}
 func (a *UserHandler) GetActivity(w http.ResponseWriter, r *http.Request) {
 	resp := response{}
 	db := config.DBConnect()
@@ -140,6 +234,13 @@ func (a *UserHandler) GetActivity(w http.ResponseWriter, r *http.Request) {
 	memberID := r.URL.Query().Get("member")
 	date := r.URL.Query().Get("date")
 	filter := r.URL.Query().Get("filter")
+	projectUrl := r.URL.Query().Get("project")
+	week := r.URL.Query().Get("week")
+	year := r.URL.Query().Get("year")
+	weeks, _ := strconv.Atoi(week)
+	years, _ := strconv.Atoi(year)
+	quarter := r.URL.Query().Get("quarter")
+	quarters, _ := strconv.Atoi(quarter)
 
 	if memberID == "" || date == "" {
 		resp.Code = http.StatusBadRequest
@@ -147,11 +248,21 @@ func (a *UserHandler) GetActivity(w http.ResponseWriter, r *http.Request) {
 		RespondWithJSON(w, resp.Code, resp)
 		return
 	}
+
 	var activity []models.Activity
+
 	if filter == "user" {
 		db.Where("member_id = ? ", memberID).Find(&activity)
 	} else if filter == "date" {
 		db.Where("date = ? ", date).Find(&activity)
+	} else if filter == "project" {
+		db.Where("project = ?", projectUrl).Find(&activity)
+	} else if filter == "projectbymember" {
+		db.Where("member_id = ? AND project = ?", memberID, projectUrl).Find(&activity)
+	} else if filter == "week" {
+		weekRange(years, weeks, memberID, w)
+	} else if filter == "quarter" {
+		quarterRange(years, quarters, memberID, w)
 	} else if filter == "both" {
 		db.Where("date = ? AND member_id = ?", date, memberID).Find(&activity)
 	} else {
