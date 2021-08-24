@@ -46,9 +46,37 @@ type Activity struct {
 	Description string `json:"description"`
 }
 
+type Issue struct {
+	gorm.Model
+	IssueId              string `json:"issue_id"`
+	IssueProject         string `json:"issue_project"`
+	IssueTracker         string `json:"issue_tracker"`
+	IssueSubject         string `json:"issue_subject"`
+	IssueStatus          string `json:"issue_status"`
+	IssuePriority        string `json:"issue_priority"`
+	IssueAssignee        string `json:"issue_assignee"`
+	IssueTargetVersion   string `json:"issue_target_version"`
+	IssueDueDate         string `json:"issue_due_date"`
+	IssueEstimatedTime   string `json:"issue_estimated_time"`
+
+	IssueCategory        string `json:"issue_category"`
+	IssueStoryPoint      string `json:"issue_story_point"`
+	IssueActualStartDate string `json:"issue_actual_start_date"`
+	IssueActualEndDate   string `json:"issue_actual_end_date"`
+	IssueGitUrl          string `json:"issue_git_url"`
+	IssueQaDeadline      string `json:"issueq_a_deadline"`
+	IssueStartDate       string `json:"issue_start_date"`
+	IssueDoneRatio     string `json:"issue_done_ratio"`
+	IssueSpentTime       string `json:"issue_spent_time"`
+	IssueAuthor          string `json:"issue_author"`
+	IssueCreated         string `json:"issue_created"`
+	IssueUpdated         string `json:"issue_updated"`
+}
+
 func DBMigrate(db *gorm.DB) {
 	db.AutoMigrate(&User{})
 	db.AutoMigrate(&Project{})
 	db.AutoMigrate(&Member{})
 	db.AutoMigrate(&Activity{})
+	db.AutoMigrate(&Issue{})
 }

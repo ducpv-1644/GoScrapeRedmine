@@ -41,13 +41,13 @@ func (a *Member) SeedMember() {
 			MemberName:  line[1],
 			MemberEmail: line[2],
 		}
-
+		fmt.Println(memberdata)
 		member := models.Member{
 			MemberId:    memberdata.MemberID,
 			MemberName:  memberdata.MemberName,
 			MemberEmail: memberdata.MemberEmail,
 		}
-
+		fmt.Println(member)
 		var dbMember models.Member
 
 		db.Where("member_id = ?", member.MemberId).First(&dbMember)

@@ -98,6 +98,7 @@ func (a *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
+
 	resp := response{}
 	db := config.DBConnect()
 
