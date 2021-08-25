@@ -41,19 +41,20 @@ func (a *Member) SeedMember() {
 			MemberName:  line[1],
 			MemberEmail: line[2],
 		}
-		fmt.Println(memberdata)
 		member := models.Member{
 			MemberId:    memberdata.MemberID,
 			MemberName:  memberdata.MemberName,
 			MemberEmail: memberdata.MemberEmail,
 		}
-		fmt.Println(member)
+
 		var dbMember models.Member
 
 		db.Where("member_id = ?", member.MemberId).First(&dbMember)
 		if dbMember.MemberId != memberdata.MemberID {
 			db.Create(&member)
-			fmt.Println(memberdata.MemberID + " " + memberdata.MemberID + " " + memberdata.MemberName)
+		}
+		if dbMember.MemberId == memberdata.MemberID && (dbMember.MemberName != memberdata.MemberName || dbMember.MemberEmail != memberdata.MemberEmail) {
+			db.Model(&member).Where("member_id = ?", member.MemberId).Updates(map[string]interface{}{"member_id": memberdata.MemberID, "member_name": memberdata.MemberName, "member_email": memberdata.MemberEmail})
 		}
 	}
 }
