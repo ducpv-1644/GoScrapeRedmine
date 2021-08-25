@@ -15,6 +15,7 @@ require (
 	github.com/kennygrant/sanitize v1.2.4 // indirect
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/saintfish/chardet v0.0.0-20120816061221-3af4cd4741ca // indirect
+	github.com/stretchr/testify v1.5.1
 	github.com/temoto/robotstxt v1.1.2 // indirect
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	gopkg.in/metakeule/fmtdate.v1 v1.1.1 // indirect

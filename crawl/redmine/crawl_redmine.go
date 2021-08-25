@@ -6,7 +6,6 @@ import (
 	"go-scrape-redmine/config"
 	"go-scrape-redmine/crawl"
 	"go-scrape-redmine/models"
-	Member "go-scrape-redmine/seed/members"
 	"net/http"
 	"os"
 	"regexp"
@@ -130,26 +129,6 @@ func crawlActivity(c *colly.Collector, db *gorm.DB) {
 				Issues:      dt.ChildText("a"),
 				Type:        strings.TrimSpace(getTypeIssue(dt.Attr("class"))),
 				Description: dd.Children().Filter("span.description").Text(),
-			}
-
-			member := models.Member{
-				MemberId:    getMemberId(dt.ChildAttr(".gravatar", "src")),
-				MemberName:  dd.Children().Filter("span.author").Text(),
-				MemberEmail: "null",
-			}
-
-			var dbMember models.Member
-
-			// truong hop khong ton tai member
-			db.Where("member_id = ?", member.MemberId).First(&dbMember)
-			if dbMember.MemberId != member.MemberId {
-				db.Create(&member)
-			}
-
-			// truong hop da ton tai trong database thi luu theo csv
-
-			if dbMember.MemberId == member.MemberId {
-				Member.NewMember().SeedMember()
 			}
 
 			var dbActivity models.Activity
