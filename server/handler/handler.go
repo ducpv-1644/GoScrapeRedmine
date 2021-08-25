@@ -152,7 +152,7 @@ func weekStart(year, week int) time.Time {
 	return t
 }
 
-func quarterRange(year, quarter int, member string, w http.ResponseWriter) {
+func quarterRange(year, quarter int) (string, string) {
 
 	var dayStart string
 	var dayEnd string
@@ -180,19 +180,12 @@ func quarterRange(year, quarter int, member string, w http.ResponseWriter) {
 		dayEnd = "12/31/" + yyyEnd
 	}
 
-	var activity []models.Activity
-	db := config.DBConnect()
-
-	db.Where("member_id = ? AND date BETWEEN ? AND ?", member, dayStart, dayEnd).Find(&activity)
-	fmt.Println("start", dayStart)
-	fmt.Println("end", dayEnd)
-	RespondWithJSON(w, http.StatusOK, activity)
+	return dayStart, dayEnd
 
 }
-func weekRange(year, week int, member string, w http.ResponseWriter) (start, end time.Time) {
-
-	start = weekStart(year, week)
-	end = start.AddDate(0, 0, 6)
+func weekRange(year, week int) (string, string) {
+	start := weekStart(year, week)
+	end := start.AddDate(0, 0, 6)
 	ddStart := start.Day()
 	mmStart := int(start.Month())
 	yyyyStart := start.Year()
@@ -221,12 +214,7 @@ func weekRange(year, week int, member string, w http.ResponseWriter) (start, end
 		dayend = strconv.Itoa(mmEnd) + "/" + strconv.Itoa(ddEnd) + "/" + strconv.Itoa(yyyyEnd)
 	}
 
-	var activity []models.Activity
-	db := config.DBConnect()
-
-	db.Where("member_id = ? AND date BETWEEN ? AND ?", member, daystart, dayend).Find(&activity)
-	RespondWithJSON(w, http.StatusOK, activity)
-	return
+	return daystart, dayend
 }
 func (a *UserHandler) GetActivity(w http.ResponseWriter, r *http.Request) {
 	resp := response{}
@@ -261,9 +249,11 @@ func (a *UserHandler) GetActivity(w http.ResponseWriter, r *http.Request) {
 	} else if filter == "projectbymember" {
 		db.Where("member_id = ? AND project = ?", memberID, projectUrl).Find(&activity)
 	} else if filter == "week" {
-		weekRange(years, weeks, memberID, w)
+		daystart, dayend := weekRange(years, weeks)
+		db.Where("member_id = ? AND date BETWEEN ? AND ?", memberID, daystart, dayend).Find(&activity)
 	} else if filter == "quarter" {
-		quarterRange(years, quarters, memberID, w)
+		dayStart, dayEnd := quarterRange(years, quarters)
+		db.Where("member_id = ? AND date BETWEEN ? AND ?", memberID, dayStart, dayEnd).Find(&activity)
 	} else if filter == "both" {
 		db.Where("date = ? AND member_id = ?", date, memberID).Find(&activity)
 	} else {
