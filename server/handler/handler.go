@@ -11,6 +11,7 @@ import (
 	"go-scrape-redmine/models"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -18,6 +19,7 @@ import (
 )
 
 type UserHandler struct{}
+
 type response struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -152,7 +154,7 @@ func weekStart(year, week int) time.Time {
 	return t
 }
 
-func quarterRange(year, quarter int, member string, w http.ResponseWriter) {
+func quarterRange(year, quarter int) (string, string) {
 
 	var dayStart string
 	var dayEnd string
@@ -180,19 +182,13 @@ func quarterRange(year, quarter int, member string, w http.ResponseWriter) {
 		dayEnd = "12/31/" + yyyEnd
 	}
 
-	var activity []models.Activity
-	db := config.DBConnect()
-
-	db.Where("member_id = ? AND date BETWEEN ? AND ?", member, dayStart, dayEnd).Find(&activity)
-	fmt.Println("start", dayStart)
-	fmt.Println("end", dayEnd)
-	RespondWithJSON(w, http.StatusOK, activity)
+	return dayStart, dayEnd
 
 }
-func weekRange(year, week int, member string, w http.ResponseWriter) (start, end time.Time) {
+func weekRange(year, week int) (string, string) {
 
-	start = weekStart(year, week)
-	end = start.AddDate(0, 0, 6)
+	start := weekStart(year, week)
+	end := start.AddDate(0, 0, 6)
 	ddStart := start.Day()
 	mmStart := int(start.Month())
 	yyyyStart := start.Year()
@@ -221,12 +217,7 @@ func weekRange(year, week int, member string, w http.ResponseWriter) (start, end
 		dayend = strconv.Itoa(mmEnd) + "/" + strconv.Itoa(ddEnd) + "/" + strconv.Itoa(yyyyEnd)
 	}
 
-	var activity []models.Activity
-	db := config.DBConnect()
-
-	db.Where("member_id = ? AND date BETWEEN ? AND ?", member, daystart, dayend).Find(&activity)
-	RespondWithJSON(w, http.StatusOK, activity)
-	return
+	return daystart, dayend
 }
 func (a *UserHandler) GetActivity(w http.ResponseWriter, r *http.Request) {
 	resp := response{}
@@ -252,30 +243,114 @@ func (a *UserHandler) GetActivity(w http.ResponseWriter, r *http.Request) {
 
 	var activity []models.Activity
 
-	if filter == "user" {
+	switch filters := filter; {
+	case filters == "user":
 		db.Where("member_id = ? ", memberID).Find(&activity)
-	} else if filter == "date" {
+	case filters == "date":
 		db.Where("date = ? ", date).Find(&activity)
-	} else if filter == "project" {
+	case filters == "project":
 		db.Where("project = ?", projectUrl).Find(&activity)
-	} else if filter == "projectbymember" {
+	case filters == "projectbymember":
 		db.Where("member_id = ? AND project = ?", memberID, projectUrl).Find(&activity)
-	} else if filter == "week" {
-		weekRange(years, weeks, memberID, w)
-	} else if filter == "quarter" {
-		quarterRange(years, quarters, memberID, w)
-	} else if filter == "both" {
+	case filters == "week":
+		daystart, dayend := weekRange(years, weeks)
+		fmt.Println(daystart)
+		fmt.Println(dayend)
+		db.Where("member_id = ? AND date BETWEEN ? AND ?", memberID, daystart, dayend).Find(&activity)
+	case filters == "quarter":
+		dayStart, dayEnd := quarterRange(years, quarters)
+		db.Where("member_id = ? AND date BETWEEN ? AND ?", memberID, dayStart, dayEnd).Find(&activity)
+	case filters == "both":
 		db.Where("date = ? AND member_id = ?", date, memberID).Find(&activity)
-	} else {
+	default:
+		resp.Code = http.StatusBadRequest
+		resp.Message = "filter invalid"
+		RespondWithJSON(w, resp.Code, resp)
+		return
+	}
+	RespondWithJSON(w, http.StatusOK, activity)
+
+}
+
+type Effort struct {
+	Projects string `json:"projects"`
+	Date     string `json:"date"`
+	Member   []Member
+}
+
+type Member struct {
+	MemberName         string  `json:"membername"`
+	TotalEstimatedTime float64 `json:"totalrstimatedtime"`
+	TotalSpentTime     float64 `json:"totalspenttime"`
+	Issue              models.Issue
+}
+
+func (a *UserHandler) GetEffort(w http.ResponseWriter, r *http.Request) {
+
+	resp := response{}
+	db := config.DBConnect()
+
+	var effort Effort
+	filter := r.URL.Query().Get("filter")
+	projectName := r.URL.Query().Get("project")
+	ranges := r.URL.Query().Get("range")
+	splitRanges := strings.Split(ranges, "-")
+
+	issue := []models.Issue{}
+
+	switch filters := filter; {
+	case filters == "effort":
+		if len(splitRanges) == 1 {
+			db.Where("issue_project = ?AND issue_start_date BETWEEN ? AND ?", projectName, splitRanges[0], splitRanges[0]).Find(&issue)
+		} else {
+			db.Where("issue_project = ? AND issue_start_date BETWEEN ? AND ?", projectName, splitRanges[0], splitRanges[1]).Find(&issue)
+		}
+	default:
 		resp.Code = http.StatusBadRequest
 		resp.Message = "filter invalid"
 		RespondWithJSON(w, resp.Code, resp)
 		return
 	}
 
-	RespondWithJSON(w, http.StatusOK, activity)
-}
+	var member []Member
 
+	for _, elememt := range issue {
+
+		issueClone := issue
+		totalEstimatedTime := 0.0
+		totalSpentTime := 0.0
+
+		db.Where("issue_assignee = ? ", elememt.IssueAssignee).Find(&issueClone)
+		for _, elementIssue := range issueClone {
+
+			estTime := 0.0
+			spentime := 0.0
+			if elementIssue.IssueEstimatedTime != "" {
+				estTime, _ = strconv.ParseFloat(elementIssue.IssueEstimatedTime, 64)
+			}
+			if elementIssue.IssueSpentTime != "" {
+				spentime, _ = strconv.ParseFloat(elementIssue.IssueSpentTime, 64)
+			}
+			totalEstimatedTime = totalEstimatedTime + estTime
+			totalSpentTime = totalSpentTime + spentime
+		}
+		data := Member{
+			MemberName:         elememt.IssueAssignee,
+			TotalEstimatedTime: totalEstimatedTime,
+			TotalSpentTime:     totalSpentTime,
+			Issue:              elememt,
+		}
+		member = append(member, data)
+	}
+
+	effort = Effort{
+		Projects: projectName,
+		Date:     ranges,
+		Member:   member,
+	}
+
+	RespondWithJSON(w, http.StatusOK, effort)
+}
 func (a *UserHandler) CrawData(w http.ResponseWriter, r *http.Request) {
 	resp := response{}
 	Redmine.NewRedmine().CrawlRedmine()

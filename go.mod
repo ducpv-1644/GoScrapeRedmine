@@ -13,6 +13,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/joho/godotenv v1.3.0
 	github.com/kennygrant/sanitize v1.2.4 // indirect
+	github.com/manucorporat/try v0.0.0-20170609134256-2a0c6b941d52 // indirect
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/saintfish/chardet v0.0.0-20120816061221-3af4cd4741ca // indirect
 	github.com/temoto/robotstxt v1.1.2 // indirect

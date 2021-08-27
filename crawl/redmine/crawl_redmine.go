@@ -132,34 +132,12 @@ func crawlActivity(c *colly.Collector, db *gorm.DB) {
 				Description: dd.Children().Filter("span.description").Text(),
 			}
 
-			member := models.Member{
-				MemberId:    getMemberId(dt.ChildAttr(".gravatar", "src")),
-				MemberName:  dd.Children().Filter("span.author").Text(),
-				MemberEmail: "null",
-			}
-
-			var dbMember models.Member
-
-			// truong hop khong ton tai member
-			db.Where("member_id = ?", member.MemberId).First(&dbMember)
-			if dbMember.MemberId != member.MemberId {
-				db.Create(&member)
-			}
-
-			// truong hop da ton tai trong database thi luu theo csv
-
-			if dbMember.MemberId == member.MemberId {
-				Member.NewMember().SeedMember()
-			}
-
 			var dbActivity models.Activity
 			db.Find(&dbActivity, activity)
 			if dbActivity == (models.Activity{}) {
 				db.Create(&activity)
 			}
-
 		})
-
 	})
 
 	c.Limit(&colly.LimitRule{
@@ -176,7 +154,6 @@ func crawlActivity(c *colly.Collector, db *gorm.DB) {
 }
 
 func crawlIssue(c *colly.Collector, db *gorm.DB) {
-	data := models.Issue{}
 	c.OnHTML("div.autoscroll tbody", func(e *colly.HTMLElement) {
 		e.ForEach("tr", func(_ int, tr *colly.HTMLElement) {
 			issue := models.Issue{
@@ -191,17 +168,11 @@ func crawlIssue(c *colly.Collector, db *gorm.DB) {
 				IssueDueDate:       tr.DOM.Children().Filter(".due_date").Text(),
 				IssueEstimatedTime: tr.DOM.Children().Filter(".estimated_hours").Text(),
 			}
-			issueUrl := os.Getenv("HOMEPAGE") + "/issues/" + issue.IssueId
-			c.Visit(e.Request.AbsoluteURL(issueUrl))
-			c.OnHTML("div#content", func(ee *colly.HTMLElement) {
-				a := ee.DOM.Children().Filter("div.spent-time attribute").Children().Filter("div.value").Text()
-				fmt.Println(a)
-			})
-			// var dbIssue models.Issue
-			// db.Find(&dbIssue, issue)
-			// if dbIssue == (models.Issue{}) {
-			// 	db.Create(&issue)
-			// }
+			var dbIssue models.Issue
+			db.Find(&dbIssue, issue)
+			if dbIssue == (models.Issue{}) {
+				db.Create(&issue)
+			}
 		})
 	})
 
@@ -220,35 +191,36 @@ func crawlIssue(c *colly.Collector, db *gorm.DB) {
 	}
 
 	fmt.Println("Crwal issue data finished.")
-	b, _ := json.Marshal(data)
-	fmt.Println(string(b))
-}
-
-type Data struct {
-	IssueCategory        string
-	IssueStoryPoint      string
-	IssueActualStartDate string
-	IssueActualEndDate   string
-	IssueGitUrl          string
-	IssueQaDeadline      string
-	IssueStartDate       string
-	IssueDoneRatio       string
-	IssueSpentTime       string
-	IssueAuthor          string
-	IssueCreated         string
-	IssueUpdated         string
 }
 
 func crawlIssueDetail(c *colly.Collector, db *gorm.DB) {
-	data := Data{}
+	var dbIssues models.Issue
+	var issue_id []string
+	var createdTime string
+	var updatedTime string
 	c.OnHTML("div#content", func(e *colly.HTMLElement) {
-		// eChildren := "div.issue div.attributes div.splitcontent div.splitcontentleft"
-		issueAuthor := e.DOM.Children().Filter("div.issue").Children().Filter("p.author").Text()
-		fmt.Println(issueAuthor)
+
+		desIssue := e.ChildAttrs("div.issue > p >a ", "title")
+		if len(desIssue) == 1 {
+			createdTime = desIssue[0]
+			updatedTime = "null"
+
+		} else {
+			createdTime = desIssue[0]
+			updatedTime = desIssue[1]
+		}
+
+		// id idIssues
+		idIssues := e.DOM.Children().Filter("h2").Text()
+		splitId := strings.Split(idIssues, "#")
 
 		divAttributes := e.DOM.Children().Filter("div.issue").Children().Filter("div.attributes")
 		splitContentLeft := divAttributes.Children().Filter("div.splitcontent").Children().Filter("div.splitcontentleft").Children()
-		dt := Data{
+
+		IssueSpentTime := splitContentLeft.Filter("div.spent-time.attribute").Children().Filter("div.value").Text()
+		splitSpentTime := strings.Split(IssueSpentTime, " ")
+
+		issue := models.Issue{
 			IssueCategory:        splitContentLeft.Filter("div.category.attribute").Children().Filter("div.value").Text(),
 			IssueActualEndDate:   splitContentLeft.Filter("div.cf_11.attribute").Children().Filter("div.value").Text(),
 			IssueStoryPoint:      splitContentLeft.Filter("div.cf_7.attribute").Children().Filter("div.value").Text(),
@@ -257,9 +229,12 @@ func crawlIssueDetail(c *colly.Collector, db *gorm.DB) {
 			IssueQaDeadline:      splitContentLeft.Filter("div.cf_27.attribute").Children().Filter("div.value").Text(),
 			IssueStartDate:       splitContentLeft.Filter("div.start-date.attribute").Children().Filter("div.value").Text(),
 			IssueDoneRatio:       splitContentLeft.Filter("div.progress.attribute").Children().Filter("div.value").Children().Filter("p.percent").Text(),
-			IssueSpentTime:       splitContentLeft.Filter("div.spent-time.attribute").Children().Filter("div.value").Text(),
+			IssueSpentTime:       splitSpentTime[0],
+			IssueCreated:         createdTime,
+			IssueUpdated:         updatedTime,
 		}
-		data = dt
+
+		db.Model(&dbIssues).Where("issue_id = ?", splitId[1]).Updates(issue)
 	})
 
 	c.Limit(&colly.LimitRule{
@@ -271,19 +246,18 @@ func crawlIssueDetail(c *colly.Collector, db *gorm.DB) {
 		fmt.Println("Visiting", r.URL.String())
 	})
 
-	c.Visit(os.Getenv("HOMEPAGE") + "/issues/710324")
-
-	fmt.Println("Crwal issue detail data finished.")
-	b, _ := json.Marshal(data)
-	fmt.Println(string(b))
+	db.Model(&dbIssues).Pluck("issue_id", &issue_id)
+	for _, element := range issue_id {
+		c.Visit(os.Getenv("HOMEPAGE") + "/issues/" + element)
+	}
 }
 
 func (a *Redmine) CrawlRedmine() {
 	fmt.Println("Cron running...crawling data.")
 	db := config.DBConnect()
 	c := initColly(os.Getenv("HOMEPAGE"))
-	crawlProject(c, db)
-	crawlActivity(c, db)
+	//crawlProject(c, db)
+	//crawlActivity(c, db)
 	crawlIssue(c, db)
-	crawlIssueDetail(c, db)
+	//crawlIssueDetail(c, db)
 }
