@@ -1,10 +1,12 @@
 package redmine
 
 import (
+	"encoding/json"
 	"fmt"
 	"go-scrape-redmine/config"
 	"go-scrape-redmine/crawl"
 	"go-scrape-redmine/models"
+	Member "go-scrape-redmine/seed/members"
 	"net/http"
 	"os"
 	"regexp"
@@ -258,5 +260,4 @@ func (a *Redmine) CrawlRedmine() {
 	//crawlActivity(c, db)
 	crawlIssue(c, db)
 	//crawlIssueDetail(c, db)
-
 }
