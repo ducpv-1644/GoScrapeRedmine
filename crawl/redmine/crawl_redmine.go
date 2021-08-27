@@ -19,6 +19,7 @@ import (
 func NewRedmine() crawl.Redmine {
 	return &Redmine{}
 }
+
 type Redmine struct{}
 
 func getMemberId(url string) string {
@@ -134,9 +135,7 @@ func crawlActivity(c *colly.Collector, db *gorm.DB) {
 			if dbActivity == (models.Activity{}) {
 				db.Create(&activity)
 			}
-
 		})
-
 	})
 
 	c.Limit(&colly.LimitRule{
@@ -152,10 +151,112 @@ func crawlActivity(c *colly.Collector, db *gorm.DB) {
 	fmt.Println("Crwal activity data finished.")
 }
 
+func crawlIssue(c *colly.Collector, db *gorm.DB) {
+	c.OnHTML("div.autoscroll tbody", func(e *colly.HTMLElement) {
+		e.ForEach("tr", func(_ int, tr *colly.HTMLElement) {
+			issue := models.Issue{
+				IssueId:            tr.DOM.Children().Filter(".id").Text(),
+				IssueProject:       tr.DOM.Children().Filter(".project").Text(),
+				IssueTracker:       tr.DOM.Children().Filter(".tracker").Text(),
+				IssueSubject:       tr.DOM.Children().Filter(".subject").Text(),
+				IssueStatus:        tr.DOM.Children().Filter(".status").Text(),
+				IssuePriority:      tr.DOM.Children().Filter(".priority").Text(),
+				IssueAssignee:      tr.DOM.Children().Filter(".assigned_to").Text(),
+				IssueTargetVersion: tr.DOM.Children().Filter(".fixed_version").Text(),
+				IssueDueDate:       tr.DOM.Children().Filter(".due_date").Text(),
+				IssueEstimatedTime: tr.DOM.Children().Filter(".estimated_hours").Text(),
+			}
+			var dbIssue models.Issue
+			db.Find(&dbIssue, issue)
+			if dbIssue == (models.Issue{}) {
+				db.Create(&issue)
+			}
+		})
+	})
+
+	c.Limit(&colly.LimitRule{
+		DomainGlob:  "*",
+		RandomDelay: 1 * time.Second,
+	})
+
+	c.OnRequest(func(r *colly.Request) {
+		fmt.Println("Visiting", r.URL.String())
+	})
+
+	for i := 1; i <= 1; i++ {
+		fullURL := fmt.Sprintf(os.Getenv("HOMEPAGE") + "/issues?page=" + strconv.Itoa(i))
+		c.Visit(fullURL)
+	}
+
+	fmt.Println("Crwal issue data finished.")
+}
+
+func crawlIssueDetail(c *colly.Collector, db *gorm.DB) {
+	var dbIssues models.Issue
+	var issue_id []string
+	var createdTime string
+	var updatedTime string
+	c.OnHTML("div#content", func(e *colly.HTMLElement) {
+
+		desIssue := e.ChildAttrs("div.issue > p >a ", "title")
+		if len(desIssue) == 1 {
+			createdTime = desIssue[0]
+			updatedTime = "null"
+
+		} else {
+			createdTime = desIssue[0]
+			updatedTime = desIssue[1]
+		}
+
+		// id idIssues
+		idIssues := e.DOM.Children().Filter("h2").Text()
+		splitId := strings.Split(idIssues, "#")
+
+		divAttributes := e.DOM.Children().Filter("div.issue").Children().Filter("div.attributes")
+		splitContentLeft := divAttributes.Children().Filter("div.splitcontent").Children().Filter("div.splitcontentleft").Children()
+
+		IssueSpentTime := splitContentLeft.Filter("div.spent-time.attribute").Children().Filter("div.value").Text()
+		splitSpentTime := strings.Split(IssueSpentTime, " ")
+
+		issue := models.Issue{
+			IssueCategory:        splitContentLeft.Filter("div.category.attribute").Children().Filter("div.value").Text(),
+			IssueActualEndDate:   splitContentLeft.Filter("div.cf_11.attribute").Children().Filter("div.value").Text(),
+			IssueStoryPoint:      splitContentLeft.Filter("div.cf_7.attribute").Children().Filter("div.value").Text(),
+			IssueActualStartDate: splitContentLeft.Filter("div.cf_10.attribute").Children().Filter("div.value").Text(),
+			IssueGitUrl:          splitContentLeft.Filter("div.cf_23.attribute").Children().Filter("div.value").Text(),
+			IssueQaDeadline:      splitContentLeft.Filter("div.cf_27.attribute").Children().Filter("div.value").Text(),
+			IssueStartDate:       splitContentLeft.Filter("div.start-date.attribute").Children().Filter("div.value").Text(),
+			IssueDoneRatio:       splitContentLeft.Filter("div.progress.attribute").Children().Filter("div.value").Children().Filter("p.percent").Text(),
+			IssueSpentTime:       splitSpentTime[0],
+			IssueCreated:         createdTime,
+			IssueUpdated:         updatedTime,
+		}
+
+		db.Model(&dbIssues).Where("issue_id = ?", splitId[1]).Updates(issue)
+	})
+
+	c.Limit(&colly.LimitRule{
+		DomainGlob:  "*",
+		RandomDelay: 1 * time.Second,
+	})
+
+	c.OnRequest(func(r *colly.Request) {
+		fmt.Println("Visiting", r.URL.String())
+	})
+
+	db.Model(&dbIssues).Pluck("issue_id", &issue_id)
+	for _, element := range issue_id {
+		c.Visit(os.Getenv("HOMEPAGE") + "/issues/" + element)
+	}
+}
+
 func (a *Redmine) CrawlRedmine() {
 	fmt.Println("Cron running...crawling data.")
 	db := config.DBConnect()
 	c := initColly(os.Getenv("HOMEPAGE"))
-	go crawlProject(c, db)
-	go crawlActivity(c, db)
+	//crawlProject(c, db)
+	//crawlActivity(c, db)
+	crawlIssue(c, db)
+	//crawlIssueDetail(c, db)
+
 }

@@ -55,5 +55,8 @@ func (a *Member) SeedMember() {
 			db.Create(&member)
 			fmt.Println(memberdata.MemberID + " " + memberdata.MemberID + " " + memberdata.MemberName)
 		}
+		if dbMember.MemberId == memberdata.MemberID && (dbMember.MemberName != memberdata.MemberName || dbMember.MemberEmail != memberdata.MemberEmail) {
+			db.Model(&member).Where("member_id = ?", member.MemberId).Updates(map[string]interface{}{"member_id": memberdata.MemberID, "member_name": memberdata.MemberName, "member_email": memberdata.MemberEmail})
+		}
 	}
 }

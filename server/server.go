@@ -73,6 +73,7 @@ func Run(wg *sync.WaitGroup) {
 	router.HandleFunc("/signup", user_handler.SignUp).Methods("POST")
 	router.HandleFunc("/signin", user_handler.SignIn).Methods("POST")
 	router.Handle("/activity", isAuthorized(user_handler.GetActivity)).Methods("GET")
+	router.Handle("/effort", isAuthorized(user_handler.GetEffort)).Methods("GET")
 	router.Handle("/crawl", isAuthorized(user_handler.CrawData)).Methods("POST")
 
 	fmt.Println("Server started port 8000!")

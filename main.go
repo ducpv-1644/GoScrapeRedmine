@@ -28,6 +28,10 @@ func main() {
 		fmt.Println("Importing member")
 		Member.NewMember().SeedMember()
 		return
+	} else if seed == "issue" {
+		fmt.Println("Importing issue")
+		Redmine.NewRedmine().CrawlRedmine()
+		return
 	} else if seed != "none" {
 		fmt.Println("Flag seed invalid")
 		return
