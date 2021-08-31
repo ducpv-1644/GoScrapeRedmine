@@ -1,12 +1,10 @@
 package redmine
 
 import (
-	"encoding/json"
 	"fmt"
 	"go-scrape-redmine/config"
 	"go-scrape-redmine/crawl"
 	"go-scrape-redmine/models"
-	Member "go-scrape-redmine/seed/members"
 	"net/http"
 	"os"
 	"regexp"
@@ -169,10 +167,15 @@ func crawlIssue(c *colly.Collector, db *gorm.DB) {
 				IssueEstimatedTime: tr.DOM.Children().Filter(".estimated_hours").Text(),
 			}
 			var dbIssue models.Issue
+
 			db.Find(&dbIssue, issue)
 			if dbIssue == (models.Issue{}) {
 				db.Create(&issue)
 			}
+			if dbIssue.IssueId == issue.IssueId {
+				db.Model(&dbIssue).Where("issue_id = ?", issue.IssueId).Updates(issue)
+			}
+
 		})
 	})
 
@@ -185,7 +188,7 @@ func crawlIssue(c *colly.Collector, db *gorm.DB) {
 		fmt.Println("Visiting", r.URL.String())
 	})
 
-	for i := 1; i <= 1; i++ {
+	for i := 1; i <= 5; i++ {
 		fullURL := fmt.Sprintf(os.Getenv("HOMEPAGE") + "/issues?page=" + strconv.Itoa(i))
 		c.Visit(fullURL)
 	}
@@ -198,16 +201,29 @@ func crawlIssueDetail(c *colly.Collector, db *gorm.DB) {
 	var issue_id []string
 	var createdTime string
 	var updatedTime string
+	var update string
+	var splitCreatedTime []string
+	var splitUpdatedTime []string
 	c.OnHTML("div#content", func(e *colly.HTMLElement) {
 
 		desIssue := e.ChildAttrs("div.issue > p >a ", "title")
+
 		if len(desIssue) == 1 {
 			createdTime = desIssue[0]
-			updatedTime = "null"
+			splitCreatedTime = strings.Split(createdTime, " ")
+			fmt.Println(splitCreatedTime[0])
+
+			updatedTime := [...]string{"null"}
+			update = updatedTime[0]
+			fmt.Println(update)
 
 		} else {
 			createdTime = desIssue[0]
+			splitCreatedTime = strings.Split(createdTime, " ")
+			fmt.Println(splitCreatedTime[0])
 			updatedTime = desIssue[1]
+			splitUpdatedTime = strings.Split(updatedTime, " ")
+			update = splitUpdatedTime[0]
 		}
 
 		// id idIssues
@@ -224,14 +240,15 @@ func crawlIssueDetail(c *colly.Collector, db *gorm.DB) {
 			IssueCategory:        splitContentLeft.Filter("div.category.attribute").Children().Filter("div.value").Text(),
 			IssueActualEndDate:   splitContentLeft.Filter("div.cf_11.attribute").Children().Filter("div.value").Text(),
 			IssueStoryPoint:      splitContentLeft.Filter("div.cf_7.attribute").Children().Filter("div.value").Text(),
+			IssueLink:            "https://dev.sun-asterisk.com/issues/" + splitId[1],
 			IssueActualStartDate: splitContentLeft.Filter("div.cf_10.attribute").Children().Filter("div.value").Text(),
 			IssueGitUrl:          splitContentLeft.Filter("div.cf_23.attribute").Children().Filter("div.value").Text(),
 			IssueQaDeadline:      splitContentLeft.Filter("div.cf_27.attribute").Children().Filter("div.value").Text(),
 			IssueStartDate:       splitContentLeft.Filter("div.start-date.attribute").Children().Filter("div.value").Text(),
 			IssueDoneRatio:       splitContentLeft.Filter("div.progress.attribute").Children().Filter("div.value").Children().Filter("p.percent").Text(),
 			IssueSpentTime:       splitSpentTime[0],
-			IssueCreated:         createdTime,
-			IssueUpdated:         updatedTime,
+			IssueCreated:         splitCreatedTime[0],
+			IssueUpdated:         update,
 		}
 
 		db.Model(&dbIssues).Where("issue_id = ?", splitId[1]).Updates(issue)
@@ -256,8 +273,8 @@ func (a *Redmine) CrawlRedmine() {
 	fmt.Println("Cron running...crawling data.")
 	db := config.DBConnect()
 	c := initColly(os.Getenv("HOMEPAGE"))
-	//crawlProject(c, db)
-	//crawlActivity(c, db)
-	crawlIssue(c, db)
-	//crawlIssueDetail(c, db)
+	// crawlProject(c, db)
+	// crawlActivity(c, db)
+	//crawlIssue(c, db)
+	crawlIssueDetail(c, db)
 }

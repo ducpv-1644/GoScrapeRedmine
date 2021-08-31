@@ -272,85 +272,303 @@ func (a *UserHandler) GetActivity(w http.ResponseWriter, r *http.Request) {
 
 }
 
-type Effort struct {
+type EffortProject struct {
 	Projects string `json:"projects"`
 	Date     string `json:"date"`
 	Member   []Member
 }
-
+type EffortMember struct {
+	Member  string `json:"member"`
+	Date    string `json:"date"`
+	Porject []Porject
+}
 type Member struct {
 	MemberName         string  `json:"membername"`
 	TotalEstimatedTime float64 `json:"totalrstimatedtime"`
 	TotalSpentTime     float64 `json:"totalspenttime"`
-	Issue              models.Issue
+	TotalIssue         int     `json: "totalssue"`
+	ListIssue          []ListIssue
+}
+type ListIssue struct {
+	NameIssue string `json:"nameissue"`
+	LinkIssue string `json:"linkissue"`
+}
+type Porject struct {
+	ProjectName        string  `json:"projectname"`
+	TotalEstimatedTime float64 `json:"totalrstimatedtime"`
+	TotalSpentTime     float64 `json:"totalspenttime"`
+	TotalIssue         int     `json: "totalssue"`
+	ListIssue          []ListIssue
+}
+type ProjectName struct {
+	Name   string `json:"name"`
+	Prefix string `json:"prefix"`
+}
+type ProjectDetail struct {
+	Name       string `json:"name"`
+	TotalIssue int    `json: "totalssue"`
+	ListIssue  []ListIssue
+}
+
+func removeDuplicateStr(strSlice []string) []string {
+	allKeys := make(map[string]bool)
+	list := []string{}
+	for _, item := range strSlice {
+		if _, value := allKeys[item]; !value {
+			allKeys[item] = true
+			list = append(list, item)
+		}
+	}
+	return list
 }
 
 func (a *UserHandler) GetEffort(w http.ResponseWriter, r *http.Request) {
 
+	// dung chung
 	resp := response{}
 	db := config.DBConnect()
-
-	var effort Effort
+	var ranges string
+	week := r.URL.Query().Get("week")
+	year := r.URL.Query().Get("year")
+	weeks, _ := strconv.Atoi(week)
+	years, _ := strconv.Atoi(year)
+	quarter := r.URL.Query().Get("quarter")
+	quarters, _ := strconv.Atoi(quarter)
 	filter := r.URL.Query().Get("filter")
-	projectName := r.URL.Query().Get("project")
-	ranges := r.URL.Query().Get("range")
+	ranges = r.URL.Query().Get("range")
 	splitRanges := strings.Split(ranges, "-")
-
+	projectName := r.URL.Query().Get("project")
+	memberName := r.URL.Query().Get("member")
 	issue := []models.Issue{}
 
-	switch filters := filter; {
-	case filters == "effort":
-		if len(splitRanges) == 1 {
-			db.Where("issue_project = ?AND issue_start_date BETWEEN ? AND ?", projectName, splitRanges[0], splitRanges[0]).Find(&issue)
-		} else {
-			db.Where("issue_project = ? AND issue_start_date BETWEEN ? AND ?", projectName, splitRanges[0], splitRanges[1]).Find(&issue)
+	// khao bao struct
+	var effortProject EffortProject
+	var effortMember EffortMember
+	var dayStartWeek string
+	var dayEndWeek string
+	var dayStartQuarter string
+	var dayEndQuarter string
+	// xu li tim kiem theo project
+	if projectName != "" {
+		switch filters := filter; {
+		case filters == "effort":
+			db.Where("issue_project = ?", projectName).Find(&issue)
+		case filters == "week":
+			{
+				dayStartWeek, dayEndWeek = weekRange(years, weeks)
+				ranges = dayStartWeek + "-" + dayEndWeek
+				db.Where("issue_project = ?", projectName).Find(&issue)
+			}
+		case filters == "quarter":
+			{
+				dayStartQuarter, dayEndQuarter = quarterRange(years, quarters)
+				ranges = dayStartQuarter + "-" + dayEndQuarter
+				db.Where("issue_project = ?", projectName).Find(&issue)
+			}
+		default:
+			resp.Code = http.StatusBadRequest
+			resp.Message = "filter invalid"
+			RespondWithJSON(w, resp.Code, resp)
+			return
 		}
-	default:
-		resp.Code = http.StatusBadRequest
-		resp.Message = "filter invalid"
-		RespondWithJSON(w, resp.Code, resp)
-		return
+
+		var members []Member
+
+		var listNameMember []string
+
+		// lay ra all name member
+		for _, elememt := range issue {
+			listNameMember = append(listNameMember, elememt.IssueAssignee)
+		}
+		// member nao da co ten thi xu li trung
+		dataNameMember := removeDuplicateStr(listNameMember)
+
+		// xu li tong time member lam va name+link Issue
+		for _, elementName := range dataNameMember {
+			var listIssue []ListIssue
+
+			issueClone := issue
+			totalEstimatedTime := 0.0
+			totalSpentTime := 0.0
+			if filter == "week" {
+				db.Where("issue_assignee = ? AND issue_due_date BETWEEN ? AND ?", elementName, dayStartWeek, dayEndWeek).Find(&issueClone)
+			}
+			if filter == "quarter" {
+				db.Where("issue_assignee = ? AND issue_due_date BETWEEN ? AND ?", elementName, dayStartQuarter, dayEndQuarter).Find(&issueClone)
+			}
+			if filter == "effort" {
+				if len(splitRanges) == 1 {
+					db.Where("issue_assignee = ? AND issue_due_date = ?", elementName, splitRanges[0]).Find(&issueClone)
+				} else {
+					db.Where("issue_assignee = ? AND issue_due_date BETWEEN ? AND ?", elementName, splitRanges[0], splitRanges[1]).Find(&issueClone)
+				}
+			}
+
+			for _, elementIssue := range issueClone {
+
+				estTime := 0.0
+				spentime := 0.0
+				if elementIssue.IssueEstimatedTime != "" {
+					estTime, _ = strconv.ParseFloat(elementIssue.IssueEstimatedTime, 64)
+				}
+				if elementIssue.IssueSpentTime != "" {
+					spentime, _ = strconv.ParseFloat(elementIssue.IssueSpentTime, 64)
+				}
+				totalEstimatedTime = totalEstimatedTime + estTime
+				totalSpentTime = totalSpentTime + spentime
+
+				dataListIssue := ListIssue{
+					NameIssue: elementIssue.IssueSubject,
+					LinkIssue: elementIssue.IssueLink,
+				}
+				listIssue = append(listIssue, dataListIssue)
+
+			}
+			data := Member{
+				MemberName:         elementName,
+				TotalEstimatedTime: totalEstimatedTime,
+				TotalSpentTime:     totalSpentTime,
+				TotalIssue:         len(listIssue),
+				ListIssue:          listIssue,
+			}
+			members = append(members, data)
+		}
+		effortProject = EffortProject{
+			Projects: projectName,
+			Date:     ranges,
+
+			Member: members,
+		}
+		RespondWithJSON(w, http.StatusOK, effortProject)
 	}
 
-	var member []Member
+	// xu li tim kiem theo member
+	if memberName != "" {
+		switch filters := filter; {
+		case filters == "effort":
+			db.Where("issue_assignee = ?", memberName).Find(&issue)
+		case filters == "week":
+			{
+				dayStartWeek, dayEndWeek = weekRange(years, weeks)
+				ranges = dayStartWeek + "-" + dayEndWeek
+				db.Where("issue_assignee = ?", memberName).Find(&issue)
+			}
+		case filters == "quarter":
+			{
+				dayStartQuarter, dayEndQuarter = quarterRange(years, quarters)
+				ranges = dayStartQuarter + "-" + dayEndQuarter
+				db.Where("issue_assignee = ?", memberName).Find(&issue)
+			}
 
-	for _, elememt := range issue {
+		default:
+			resp.Code = http.StatusBadRequest
+			resp.Message = "filter invalid"
+			RespondWithJSON(w, resp.Code, resp)
+			return
+		}
 
+		var project []Porject
+		var listNameProject []string
+
+		for _, elememt := range issue {
+			listNameProject = append(listNameProject, elememt.IssueAssignee)
+		}
+
+		dataNameProject := removeDuplicateStr(listNameProject)
+
+		for _, e := range dataNameProject {
+			var listIssue []ListIssue
+			var nameProject string
+			issueClone := issue
+			totalEstimatedTime := 0.0
+			totalSpentTime := 0.0
+			if filter == "week" {
+				db.Where("issue_assignee = ? AND issue_due_date BETWEEN ? AND ?", e, dayStartWeek, dayEndWeek).Find(&issueClone)
+			}
+			if filter == "quarter" {
+				db.Where("issue_assignee = ? AND issue_due_date BETWEEN ? AND ?", e, dayStartQuarter, dayEndQuarter).Find(&issueClone)
+			}
+			if filter == "effort" {
+				if len(splitRanges) == 1 {
+					db.Where("issue_assignee = ? AND issue_due_date = ?", e, splitRanges[0]).Find(&issueClone)
+				} else {
+					db.Where("issue_assignee = ? AND issue_due_date BETWEEN ? AND ?", e, splitRanges[0], splitRanges[1]).Find(&issueClone)
+				}
+			}
+			for _, elementIssue := range issueClone {
+				estTime := 0.0
+				spentime := 0.0
+				if elementIssue.IssueEstimatedTime != "" {
+					estTime, _ = strconv.ParseFloat(elementIssue.IssueEstimatedTime, 64)
+				}
+				if elementIssue.IssueSpentTime != "" {
+					spentime, _ = strconv.ParseFloat(elementIssue.IssueSpentTime, 64)
+				}
+				totalEstimatedTime = totalEstimatedTime + estTime
+				totalSpentTime = totalSpentTime + spentime
+				nameProject = elementIssue.IssueProject
+				dataListIssue := ListIssue{
+					NameIssue: elementIssue.IssueSubject,
+					LinkIssue: elementIssue.IssueLink,
+				}
+				listIssue = append(listIssue, dataListIssue)
+			}
+
+			data := Porject{
+				ProjectName:        nameProject,
+				TotalEstimatedTime: totalEstimatedTime,
+				TotalSpentTime:     totalSpentTime,
+				TotalIssue:         len(listIssue),
+				ListIssue:          listIssue,
+			}
+			project = append(project, data)
+		}
+
+		effortMember = EffortMember{
+			Member: memberName,
+			Date:   ranges,
+
+			Porject: project,
+		}
+		RespondWithJSON(w, http.StatusOK, effortMember)
+	} else {
+		// tim kiem all project
+		var listdataDetail []ListIssue
+		var projetDetail []ProjectDetail
+		projectIssue := []models.Project{}
 		issueClone := issue
-		totalEstimatedTime := 0.0
-		totalSpentTime := 0.0
+		project := r.URL.Query().Get("projects")
+		pre := "/projects/" + project
 
-		db.Where("issue_assignee = ? ", elememt.IssueAssignee).Find(&issueClone)
-		for _, elementIssue := range issueClone {
-
-			estTime := 0.0
-			spentime := 0.0
-			if elementIssue.IssueEstimatedTime != "" {
-				estTime, _ = strconv.ParseFloat(elementIssue.IssueEstimatedTime, 64)
+		db.Where("prefix = ?", pre).Find(&projectIssue)
+		for _, e := range projectIssue {
+			data := ProjectName{
+				Name:   e.Name,
+				Prefix: e.Prefix,
 			}
-			if elementIssue.IssueSpentTime != "" {
-				spentime, _ = strconv.ParseFloat(elementIssue.IssueSpentTime, 64)
+			nameProject := data.Name
+
+			db.Where("issue_project = ?", nameProject).Find(&issueClone)
+			for _, elementIssueDetail := range issueClone {
+				dataListIssue := ListIssue{
+					NameIssue: elementIssueDetail.IssueSubject,
+					LinkIssue: elementIssueDetail.IssueLink,
+				}
+				listdataDetail = append(listdataDetail, dataListIssue)
 			}
-			totalEstimatedTime = totalEstimatedTime + estTime
-			totalSpentTime = totalSpentTime + spentime
-		}
-		data := Member{
-			MemberName:         elememt.IssueAssignee,
-			TotalEstimatedTime: totalEstimatedTime,
-			TotalSpentTime:     totalSpentTime,
-			Issue:              elememt,
-		}
-		member = append(member, data)
-	}
 
-	effort = Effort{
-		Projects: projectName,
-		Date:     ranges,
-		Member:   member,
-	}
+			dataDetail := ProjectDetail{
+				Name:       nameProject,
+				TotalIssue: len(listdataDetail),
+				ListIssue:  listdataDetail,
+			}
+			projetDetail = append(projetDetail, dataDetail)
+		}
 
-	RespondWithJSON(w, http.StatusOK, effort)
+		RespondWithJSON(w, http.StatusOK, projetDetail)
+	}
 }
+
 func (a *UserHandler) CrawData(w http.ResponseWriter, r *http.Request) {
 	resp := response{}
 	Redmine.NewRedmine().CrawlRedmine()
