@@ -21,8 +21,9 @@ import (
 type UserHandler struct{}
 
 type response struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Result    interface{} `json:"result"`
 }
 
 func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
@@ -75,7 +76,14 @@ func (a *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		resp.Code = http.StatusBadRequest
 		resp.Message = err.Error()
-		RespondWithJSON(w, resp.Code, resp)
+		RespondWithJSON(w, http.StatusOK, resp)
+		return
+	}
+
+	if user.Email == "" {
+		resp.Code = http.StatusBadRequest
+		resp.Message = "Email is required!"
+		RespondWithJSON(w, http.StatusOK, resp)
 		return
 	}
 
@@ -83,7 +91,7 @@ func (a *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	if dbuser.Email != "" {
 		resp.Code = http.StatusBadRequest
 		resp.Message = "Email already in use!"
-		RespondWithJSON(w, resp.Code, resp)
+		RespondWithJSON(w, http.StatusOK, resp)
 		return
 	}
 
@@ -91,12 +99,14 @@ func (a *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		resp.Code = http.StatusBadRequest
 		resp.Message = "error in password hash!"
-		RespondWithJSON(w, resp.Code, resp)
+		RespondWithJSON(w, http.StatusOK, resp)
 		return
 	}
 
 	userCreated := newUserUsecase().CreateUser(db, user)
-	RespondWithJSON(w, http.StatusOK, userCreated)
+	resp.Code = http.StatusOK
+	resp.Result = userCreated
+	RespondWithJSON(w, http.StatusOK, resp)
 }
 
 func (a *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
@@ -109,7 +119,7 @@ func (a *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		resp.Code = http.StatusBadRequest
 		resp.Message = err.Error()
-		RespondWithJSON(w, resp.Code, resp)
+		RespondWithJSON(w, http.StatusOK, resp)
 		return
 	}
 
@@ -118,7 +128,7 @@ func (a *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	if !passwordOK || authuser.Email == "" {
 		resp.Code = http.StatusBadRequest
 		resp.Message = "Username or Password is incorrect"
-		RespondWithJSON(w, resp.Code, resp)
+		RespondWithJSON(w, http.StatusOK, resp)
 		return
 	}
 
@@ -126,7 +136,7 @@ func (a *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		resp.Code = http.StatusBadRequest
 		resp.Message = "Failed to generate token"
-		RespondWithJSON(w, resp.Code, resp)
+		RespondWithJSON(w, http.StatusOK, resp)
 		return
 	}
 
@@ -134,7 +144,10 @@ func (a *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	token.Email = authuser.Email
 	token.Role = authuser.Role
 	token.TokenString = validToken
-	RespondWithJSON(w, http.StatusOK, token)
+
+	resp.Code = http.StatusOK
+	resp.Result = token
+	RespondWithJSON(w, http.StatusOK, resp)
 }
 func weekStart(year, week int) time.Time {
 	// Start from the middle of the year:

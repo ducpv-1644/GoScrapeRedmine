@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/handlers"
 )
 
 type response struct {
@@ -69,6 +70,10 @@ func Run(wg *sync.WaitGroup) {
 	user_handler := handler.UserHandler{}
 	defer wg.Done()
 
+	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type"})
+	originsOk := handlers.AllowedOrigins([]string{"*"})
+	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
+
 	router.Handle("/", isAuthorized(handlerx)).Methods("GET")
 	router.HandleFunc("/signup", user_handler.SignUp).Methods("POST")
 	router.HandleFunc("/signin", user_handler.SignIn).Methods("POST")
@@ -77,5 +82,5 @@ func Run(wg *sync.WaitGroup) {
 	router.Handle("/crawl", isAuthorized(user_handler.CrawData)).Methods("POST")
 
 	fmt.Println("Server started port 8000!")
-	http.ListenAndServe(":8000", router)
+	http.ListenAndServe(":8000", handlers.CORS(originsOk, headersOk, methodsOk)(router))
 }
