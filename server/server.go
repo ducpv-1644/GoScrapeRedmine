@@ -80,7 +80,6 @@ func Run(wg *sync.WaitGroup) {
 	router.Handle("/activity", isAuthorized(user_handler.GetActivity)).Methods("GET")
 	router.Handle("/effort", isAuthorized(user_handler.GetEffort)).Methods("GET")
 	router.Handle("/crawl", isAuthorized(user_handler.CrawData)).Methods("POST")
-
 	router.Handle("/projects", isAuthorized(user_handler.GetAllProject)).Methods("GET")
 
 	fmt.Println("Server started port 8000!")
