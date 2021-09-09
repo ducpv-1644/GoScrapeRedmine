@@ -21,9 +21,9 @@ import (
 type UserHandler struct{}
 
 type response struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Result    interface{} `json:"result"`
+	Code          int                 `json:"code"`
+	Message       string              `json:"message"`
+	Result        interface{}         `json:"result"`
 }
 
 func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
@@ -588,4 +588,15 @@ func (a *UserHandler) CrawData(w http.ResponseWriter, r *http.Request) {
 	resp.Code = http.StatusOK
 	resp.Message = "Request crawl redmine data finished."
 	RespondWithJSON(w, resp.Code, resp)
+}
+
+func (a *UserHandler) GetAllProject(w http.ResponseWriter, r *http.Request) {
+	db := config.DBConnect()
+	dbprojects := []models.Project{}
+	db.Find(&dbprojects)
+
+	resp := response{}
+	resp.Code = http.StatusOK
+	resp.Result = dbprojects
+	RespondWithJSON(w, http.StatusOK, resp)
 }
