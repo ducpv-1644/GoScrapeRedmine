@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"go-scrape-redmine/server/handler"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/golang-jwt/jwt"
-	"github.com/gorilla/mux"
 	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 )
 
 type response struct {
@@ -29,13 +30,17 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handle
 	resp := response{}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header["Token"] == nil {
+		authorizationHeader := r.Header.Get("authorization")
+
+		if authorizationHeader == "" {
 			resp.Code = http.StatusBadRequest
 			resp.Message = "No Token Found"
 			handler.RespondWithJSON(w, resp.Code, resp)
 			return
 		}
-		token, err := jwt.Parse(r.Header["Token"][0], func(token *jwt.Token) (interface{}, error) {
+
+		bearerToken := strings.Split(authorizationHeader, " ")
+		token, err := jwt.Parse(bearerToken[1], func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("Token invalid!")
 			}
@@ -70,7 +75,7 @@ func Run(wg *sync.WaitGroup) {
 	user_handler := handler.UserHandler{}
 	defer wg.Done()
 
-	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type"})
+	headersOk := handlers.AllowedHeaders([]string{"Accept", "content-type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization"})
 	originsOk := handlers.AllowedOrigins([]string{"*"})
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
 
@@ -82,7 +87,7 @@ func Run(wg *sync.WaitGroup) {
 	router.Handle("/crawl", isAuthorized(user_handler.CrawData)).Methods("POST")
 	router.Handle("/projects", isAuthorized(user_handler.GetAllProject)).Methods("GET")
 
-	router.HandleFunc("/projects", user_handler.GetAllProject).Methods("GET")
+	router.Handle("/projects", isAuthorized(user_handler.GetAllProject)).Methods("GET")
 
 	fmt.Println("Server started port 8000!")
 	http.ListenAndServe(":8000", handlers.CORS(originsOk, headersOk, methodsOk)(router))
