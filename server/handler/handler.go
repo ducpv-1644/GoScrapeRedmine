@@ -21,9 +21,9 @@ import (
 type UserHandler struct{}
 
 type response struct {
-	Code          int                 `json:"code"`
-	Message       string              `json:"message"`
-	Result        interface{}         `json:"result"`
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Result  interface{} `json:"result"`
 }
 
 func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
@@ -288,7 +288,8 @@ func (a *UserHandler) GetActivity(w http.ResponseWriter, r *http.Request) {
 type EffortProject struct {
 	Projects string `json:"projects"`
 	Date     string `json:"date"`
-	Member   []Member
+	Issues   []models.Issue `json:"issues"`
+	Members   []Member `json:"members"`
 }
 type EffortMember struct {
 	Member  string `json:"member"`
@@ -363,28 +364,31 @@ func (a *UserHandler) GetEffort(w http.ResponseWriter, r *http.Request) {
 	var dayEndQuarter string
 	// xu li tim kiem theo project
 	if projectName != "" {
+
+		var filterInValid bool
+		filterInValid = false
+
+
 		switch filters := filter; {
-		case filters == "effort":
-			db.Where("issue_project = ?", projectName).Find(&issue)
 		case filters == "week":
-			{
-				dayStartWeek, dayEndWeek = weekRange(years, weeks)
-				ranges = dayStartWeek + "-" + dayEndWeek
-				db.Where("issue_project = ?", projectName).Find(&issue)
-			}
+			dayStartWeek, dayEndWeek = weekRange(years, weeks)
+			ranges = dayStartWeek + "-" + dayEndWeek
 		case filters == "quarter":
-			{
-				dayStartQuarter, dayEndQuarter = quarterRange(years, quarters)
-				ranges = dayStartQuarter + "-" + dayEndQuarter
-				db.Where("issue_project = ?", projectName).Find(&issue)
-			}
+			dayStartQuarter, dayEndQuarter = quarterRange(years, quarters)
+			ranges = dayStartQuarter + "-" + dayEndQuarter
+		case filters == "effort":
+			filterInValid = false
 		default:
+			filterInValid = true
+		}
+		if filterInValid {
 			resp.Code = http.StatusBadRequest
-			resp.Message = "filter invalid"
-			RespondWithJSON(w, resp.Code, resp)
+			resp.Message = "'filter' invalid"
+			RespondWithJSON(w, http.StatusOK, resp)
 			return
 		}
 
+		db.Where("issue_project = ?", projectName).Find(&issue)
 		var members []Member
 
 		var listNameMember []string
@@ -393,6 +397,7 @@ func (a *UserHandler) GetEffort(w http.ResponseWriter, r *http.Request) {
 		for _, elememt := range issue {
 			listNameMember = append(listNameMember, elememt.IssueAssignee)
 		}
+
 		// member nao da co ten thi xu li trung
 		dataNameMember := removeDuplicateStr(listNameMember)
 
@@ -449,10 +454,13 @@ func (a *UserHandler) GetEffort(w http.ResponseWriter, r *http.Request) {
 		effortProject = EffortProject{
 			Projects: projectName,
 			Date:     ranges,
-
-			Member: members,
+			Issues: issue,
+			Members: members,
 		}
-		RespondWithJSON(w, http.StatusOK, effortProject)
+		resp.Code = http.StatusOK
+		resp.Result = effortProject
+		RespondWithJSON(w, http.StatusOK, resp)
+		return
 	}
 
 	// xu li tim kiem theo member
