@@ -636,3 +636,53 @@ func (a *UserHandler) GetAllProject(w http.ResponseWriter, r *http.Request) {
 	resp.Result = dbprojects
 	RespondWithJSON(w, http.StatusOK, resp)
 }
+
+type getAllMemberResult struct {
+	MemberName       string
+	ProjectName      []string
+	SumEffort        float64
+}
+
+func (a *UserHandler) GetAllMember(w http.ResponseWriter, r *http.Request) {
+	db := config.DBConnect()
+	var result []getAllMemberResult
+	var listNameMember []string
+
+	dbissues := []models.Issue{}
+
+	db.Model(&dbissues).Where("issue_assignee != ?", "").Pluck("issue_assignee", &listNameMember)
+	nameMembers := removeDuplicateStr(listNameMember)
+
+	for _, name := range nameMembers {
+		var dbnameProjects []string
+		dbissuesClone := dbissues
+
+		dbQuery := db.Model(&dbissuesClone).Where("issue_assignee = ?", name)
+		dbQuery.Pluck("issue_project", &dbnameProjects)
+		nameProjectUniq := removeDuplicateStr(dbnameProjects)
+
+		issuesWithMember := []models.Issue{}
+		db.Where("issue_assignee = ?", name).Find(&issuesWithMember)
+		sumEffort := 0.0
+		for _, issue := range issuesWithMember {
+			estTime := 0.0
+			if issue.IssueSpentTime != "" {
+				estTime, _ = strconv.ParseFloat(issue.IssueEstimatedTime, 64)
+			}
+			sumEffort = sumEffort + estTime
+		}
+
+		memberData := getAllMemberResult{
+			MemberName: name,
+			ProjectName: nameProjectUniq,
+			SumEffort: sumEffort,
+		}
+		result = append(result, memberData)
+	}
+
+	resp := response{}
+	resp.Code = http.StatusOK
+	resp.Result = result
+	RespondWithJSON(w, http.StatusOK, resp)
+}
+
