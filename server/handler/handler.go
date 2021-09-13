@@ -50,7 +50,7 @@ func generateJWT(email, role string) (string, error) {
 
 	claims["authorized"] = true
 	claims["email"] = email
-	claims["role"] = role
+	claims["role"] = "user"
 	claims["exp"] = time.Now().Add(time.Minute * 30).Unix()
 
 	tokenString, err := token.SignedString(mySigningKey)
@@ -288,7 +288,7 @@ func (a *UserHandler) GetActivity(w http.ResponseWriter, r *http.Request) {
 type EffortProject struct {
 	Projects string `json:"projects"`
 	Date     string `json:"date"`
-	Issues   []models.Issue `json:"issues"`
+	Issues   []IssueDataTable `json:"issues"`
 	Members   []Member `json:"members"`
 }
 type EffortMember struct {
@@ -323,6 +323,18 @@ type ProjectDetail struct {
 	TotalIssue int    `json: "totalssue"`
 	ListIssue  []ListIssue
 }
+type IssueDataTable struct {
+	IssueId string `json:"issue_id"`
+	IssueTracker string `json:"issue_tracker"`
+	IssueStatus string `json:"issue_status"`
+	IssuePriority string `json:"issue_priority"`
+	IssueSubject string `json:"issue_subject"`
+	IssueAssignee string `json:"issue_assignee"`
+	IssueTargetVersion string `json:"issue_target_version"`
+	IssueDueDate string `json:"issue_due_date"`
+	IssueEstimatedTime string `json:"issue_estimated_time"`
+	IssueDoneRatio string `json:"issue_done_ratio"`
+}
 
 func removeDuplicateStr(strSlice []string) []string {
 	allKeys := make(map[string]bool)
@@ -351,9 +363,10 @@ func (a *UserHandler) GetEffort(w http.ResponseWriter, r *http.Request) {
 	filter := r.URL.Query().Get("filter")
 	ranges = r.URL.Query().Get("range")
 	splitRanges := strings.Split(ranges, "-")
-	projectName := r.URL.Query().Get("project")
+	projectID := r.URL.Query().Get("project_id")
 	memberName := r.URL.Query().Get("member")
 	issue := []models.Issue{}
+	project := models.Project{}
 
 	// khao bao struct
 	var effortProject EffortProject
@@ -362,10 +375,14 @@ func (a *UserHandler) GetEffort(w http.ResponseWriter, r *http.Request) {
 	var dayEndWeek string
 	var dayStartQuarter string
 	var dayEndQuarter string
+	var projectName string
 	// xu li tim kiem theo project
+	db.Where("id = ?", projectID).Find(&project)
+	projectName = project.Name
 	if projectName != "" {
 
 		var filterInValid bool
+		var listNameMember []string
 		filterInValid = false
 
 
@@ -389,9 +406,10 @@ func (a *UserHandler) GetEffort(w http.ResponseWriter, r *http.Request) {
 		}
 
 		db.Where("issue_project = ?", projectName).Find(&issue)
-		var members []Member
 
-		var listNameMember []string
+
+		issueDatatable := []IssueDataTable{}
+		members := []Member{}
 
 		// lay ra all name member
 		for _, elememt := range issue {
@@ -421,7 +439,6 @@ func (a *UserHandler) GetEffort(w http.ResponseWriter, r *http.Request) {
 					db.Where("issue_assignee = ? AND issue_due_date BETWEEN ? AND ?", elementName, splitRanges[0], splitRanges[1]).Find(&issueClone)
 				}
 			}
-
 			for _, elementIssue := range issueClone {
 
 				estTime := 0.0
@@ -440,7 +457,18 @@ func (a *UserHandler) GetEffort(w http.ResponseWriter, r *http.Request) {
 					LinkIssue: elementIssue.IssueLink,
 				}
 				listIssue = append(listIssue, dataListIssue)
-
+				issueDatatable = append(issueDatatable, IssueDataTable{
+					IssueId: elementIssue.IssueId,
+					IssueTracker: elementIssue.IssueTracker,
+					IssueStatus: elementIssue.IssueStatus,
+					IssuePriority: elementIssue.IssuePriority,
+					IssueSubject: elementIssue.IssueSubject,
+					IssueAssignee: elementIssue.IssueAssignee,
+					IssueTargetVersion: elementIssue.IssueTargetVersion,
+					IssueDueDate: elementIssue.IssueDueDate,
+					IssueEstimatedTime: elementIssue.IssueEstimatedTime,
+					IssueDoneRatio: elementIssue.IssueDoneRatio,
+				})
 			}
 			data := Member{
 				MemberName:         elementName,
@@ -451,10 +479,11 @@ func (a *UserHandler) GetEffort(w http.ResponseWriter, r *http.Request) {
 			}
 			members = append(members, data)
 		}
+
 		effortProject = EffortProject{
 			Projects: projectName,
 			Date:     ranges,
-			Issues: issue,
+			Issues: issueDatatable,
 			Members: members,
 		}
 		resp.Code = http.StatusOK
@@ -548,7 +577,6 @@ func (a *UserHandler) GetEffort(w http.ResponseWriter, r *http.Request) {
 		effortMember = EffortMember{
 			Member: memberName,
 			Date:   ranges,
-
 			Porject: project,
 		}
 		RespondWithJSON(w, http.StatusOK, effortMember)
