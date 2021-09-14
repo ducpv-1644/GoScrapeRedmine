@@ -7,6 +7,8 @@ import (
 	"go-scrape-redmine/models"
 	"go-scrape-redmine/seed"
 	"os"
+	"io"
+	"bufio"
 )
 
 func NewMember() seed.Member {
@@ -21,6 +23,25 @@ type memberData struct {
 	MemberEmail string
 }
 
+func readCSV(rs io.ReadSeeker) ([][]string, error) {
+    // Skip first row (line)
+    row1, err := bufio.NewReader(rs).ReadSlice('\n')
+    if err != nil {
+        return nil, err
+    }
+    _, err = rs.Seek(int64(len(row1)), io.SeekStart)
+    if err != nil {
+        return nil, err
+    }
+
+    // Read remaining rows
+    r := csv.NewReader(rs)
+    rows, err := r.ReadAll()
+    if err != nil {
+        return nil, err
+    }
+    return rows, nil
+}
 func (a *Member) SeedMember() {
 	db := config.DBConnect()
 	csvFile, err := os.Open(os.Getenv("SEED_FILE_PATH"))
@@ -31,7 +52,7 @@ func (a *Member) SeedMember() {
 	fmt.Println("Successfully Opened CSV file")
 	defer csvFile.Close()
 
-	csvLines, err := csv.NewReader(csvFile).ReadAll()
+	csvLines, err := readCSV(csvFile)
 	if err != nil {
 		fmt.Println(err)
 	}
