@@ -286,10 +286,10 @@ func (a *UserHandler) GetActivity(w http.ResponseWriter, r *http.Request) {
 }
 
 type EffortProject struct {
-	Projects string `json:"projects"`
-	Date     string `json:"date"`
+	Projects string           `json:"projects"`
+	Date     string           `json:"date"`
 	Issues   []IssueDataTable `json:"issues"`
-	Members   []Member `json:"members"`
+	Members  []Member         `json:"members"`
 }
 type EffortMember struct {
 	Member  string `json:"member"`
@@ -324,16 +324,16 @@ type ProjectDetail struct {
 	ListIssue  []ListIssue
 }
 type IssueDataTable struct {
-	IssueId string `json:"issue_id"`
-	IssueTracker string `json:"issue_tracker"`
-	IssueStatus string `json:"issue_status"`
-	IssuePriority string `json:"issue_priority"`
-	IssueSubject string `json:"issue_subject"`
-	IssueAssignee string `json:"issue_assignee"`
+	IssueId            string `json:"issue_id"`
+	IssueTracker       string `json:"issue_tracker"`
+	IssueStatus        string `json:"issue_status"`
+	IssuePriority      string `json:"issue_priority"`
+	IssueSubject       string `json:"issue_subject"`
+	IssueAssignee      string `json:"issue_assignee"`
 	IssueTargetVersion string `json:"issue_target_version"`
-	IssueDueDate string `json:"issue_due_date"`
+	IssueDueDate       string `json:"issue_due_date"`
 	IssueEstimatedTime string `json:"issue_estimated_time"`
-	IssueDoneRatio string `json:"issue_done_ratio"`
+	IssueDoneRatio     string `json:"issue_done_ratio"`
 }
 
 func removeDuplicateStr(strSlice []string) []string {
@@ -385,7 +385,6 @@ func (a *UserHandler) GetEffort(w http.ResponseWriter, r *http.Request) {
 		var listNameMember []string
 		filterInValid = false
 
-
 		switch filters := filter; {
 		case filters == "week":
 			dayStartWeek, dayEndWeek = weekRange(years, weeks)
@@ -406,7 +405,6 @@ func (a *UserHandler) GetEffort(w http.ResponseWriter, r *http.Request) {
 		}
 
 		db.Where("issue_project = ?", projectName).Find(&issue)
-
 
 		issueDatatable := []IssueDataTable{}
 		members := []Member{}
@@ -458,16 +456,16 @@ func (a *UserHandler) GetEffort(w http.ResponseWriter, r *http.Request) {
 				}
 				listIssue = append(listIssue, dataListIssue)
 				issueDatatable = append(issueDatatable, IssueDataTable{
-					IssueId: elementIssue.IssueId,
-					IssueTracker: elementIssue.IssueTracker,
-					IssueStatus: elementIssue.IssueStatus,
-					IssuePriority: elementIssue.IssuePriority,
-					IssueSubject: elementIssue.IssueSubject,
-					IssueAssignee: elementIssue.IssueAssignee,
+					IssueId:            elementIssue.IssueId,
+					IssueTracker:       elementIssue.IssueTracker,
+					IssueStatus:        elementIssue.IssueStatus,
+					IssuePriority:      elementIssue.IssuePriority,
+					IssueSubject:       elementIssue.IssueSubject,
+					IssueAssignee:      elementIssue.IssueAssignee,
 					IssueTargetVersion: elementIssue.IssueTargetVersion,
-					IssueDueDate: elementIssue.IssueDueDate,
+					IssueDueDate:       elementIssue.IssueDueDate,
 					IssueEstimatedTime: elementIssue.IssueEstimatedTime,
-					IssueDoneRatio: elementIssue.IssueDoneRatio,
+					IssueDoneRatio:     elementIssue.IssueDoneRatio,
 				})
 			}
 			data := Member{
@@ -483,8 +481,8 @@ func (a *UserHandler) GetEffort(w http.ResponseWriter, r *http.Request) {
 		effortProject = EffortProject{
 			Projects: projectName,
 			Date:     ranges,
-			Issues: issueDatatable,
-			Members: members,
+			Issues:   issueDatatable,
+			Members:  members,
 		}
 		resp.Code = http.StatusOK
 		resp.Result = effortProject
@@ -575,8 +573,8 @@ func (a *UserHandler) GetEffort(w http.ResponseWriter, r *http.Request) {
 		}
 
 		effortMember = EffortMember{
-			Member: memberName,
-			Date:   ranges,
+			Member:  memberName,
+			Date:    ranges,
 			Porject: project,
 		}
 		RespondWithJSON(w, http.StatusOK, effortMember)
@@ -637,6 +635,49 @@ func (a *UserHandler) GetAllProject(w http.ResponseWriter, r *http.Request) {
 	RespondWithJSON(w, http.StatusOK, resp)
 }
 
+/// Get Issues Fake data
+
+type Issue struct {
+	IssueId            string `json:"issue_id"`
+	IssueProject       string `json:"issue_project"`
+	IssueTracker       string `json:"issue_tracker"`
+	IssueSubject       string `json:"issue_subject"`
+	IssueStatus        string `json:"issue_status"`
+	IssuePriority      string `json:"issue_priority"`
+	IssueAssignee      string `json:"issue_assignee"`
+	IssueTargetVersion string `json:"issue_target_version"`
+	IssueDueDate       string `json:"issue_due_date"`
+	IssueEstimatedTime string `json:"issue_estimated_time"`
+	IssueDoneRatio     string `json:"issue_done_ratio"`
+}
+
+type MemberIssue struct {
+	MemberId    string `json:"menberid"`
+	MemberName  string `json:"menbername"`
+	MemberEmail string `json:"menberemail"`
+}
+
+func (a *UserHandler) GetAllIssue(w http.ResponseWriter, r *http.Request) {
+	db := config.DBConnect()
+	issue := []models.Issue{}
+	member := []models.Member{}
+	db.Where("member_id = ?", r.URL.Query().Get("id")).Find(&member)
+	for _, e := range member {
+		data := MemberIssue{
+			MemberId:    e.MemberId,
+			MemberName:  e.MemberName,
+			MemberEmail: e.MemberEmail,
+		}
+		namMember := data.MemberName
+		fmt.Println(namMember)
+		db.Where("issue_assignee=?", namMember).Find(&issue)
+	}
+	resp := response{}
+	resp.Code = http.StatusOK
+	resp.Result = issue
+	RespondWithJSON(w, http.StatusOK, resp)
+}
+
 type getAllMemberResult struct {
 	MemberID         string
 	MemberName       string
@@ -680,10 +721,10 @@ func (a *UserHandler) GetAllMember(w http.ResponseWriter, r *http.Request) {
 		}
 
 		memberData := getAllMemberResult{
-			MemberID: member.MemberId,
-			MemberName: member.MemberName,
-			ProjectName: strings.Join(nameProjectUniq,", "),
-			SumSpentTime: sumSpent,
+			MemberID:         member.MemberId,
+			MemberName:       member.MemberName,
+			ProjectName:      strings.Join(nameProjectUniq, ", "),
+			SumSpentTime:     sumSpent,
 			SumEstimatedTime: sumEstimated,
 		}
 		result = append(result, memberData)
@@ -694,4 +735,3 @@ func (a *UserHandler) GetAllMember(w http.ResponseWriter, r *http.Request) {
 	resp.Result = result
 	RespondWithJSON(w, http.StatusOK, resp)
 }
-

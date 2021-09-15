@@ -88,7 +88,7 @@ func Run(wg *sync.WaitGroup) {
 	router.Handle("/projects", isAuthorized(user_handler.GetAllProject)).Methods("GET")
 	// router.Handle("/members", isAuthorized(user_handler.GetAllMember)).Methods("GET")
 	router.HandleFunc("/members", user_handler.GetAllMember).Methods("GET")
-
+	router.Handle("/issue", isAuthorized(user_handler.GetAllIssue)).Methods("GET")
 	fmt.Println("Server started port 8000!")
 	http.ListenAndServe(":8000", handlers.CORS(originsOk, headersOk, methodsOk)(router))
 }

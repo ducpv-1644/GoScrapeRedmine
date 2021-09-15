@@ -274,8 +274,8 @@ func (a *Redmine) CrawlRedmine() {
 	fmt.Println("Cron running...crawling data.")
 	db := config.DBConnect()
 	c := initColly(os.Getenv("HOMEPAGE"))
-	crawlProject(c, db)
-	crawlActivity(c, db)
-	crawlIssue(c, db)
+	//crawlProject(c, db)
+	//crawlActivity(c, db)
+	//crawlIssue(c, db)
 	crawlIssueDetail(c, db)
 }
