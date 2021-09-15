@@ -636,3 +636,62 @@ func (a *UserHandler) GetAllProject(w http.ResponseWriter, r *http.Request) {
 	resp.Result = dbprojects
 	RespondWithJSON(w, http.StatusOK, resp)
 }
+
+type getAllMemberResult struct {
+	MemberID         string
+	MemberName       string
+	ProjectName      string
+	SumSpentTime     float64
+	SumEstimatedTime float64
+}
+
+func (a *UserHandler) GetAllMember(w http.ResponseWriter, r *http.Request) {
+	db := config.DBConnect()
+	var result []getAllMemberResult
+
+	dbissues := []models.Issue{}
+	dbmembers := []models.Member{}
+
+	db.Find(&dbmembers)
+
+	for _, member := range dbmembers {
+		var dbnameProjects []string
+		dbissuesClone := dbissues
+
+		dbQuery := db.Model(&dbissuesClone).Where("issue_assignee = ?", member.MemberName)
+		dbQuery.Pluck("issue_project", &dbnameProjects)
+		nameProjectUniq := removeDuplicateStr(dbnameProjects)
+
+		issuesWithMember := []models.Issue{}
+		db.Where("issue_assignee = ?", member.MemberName).Find(&issuesWithMember)
+		sumEstimated := 0.0
+		sumSpent := 0.0
+		for _, issue := range issuesWithMember {
+			estTime := 0.0
+			spentTime := 0.0
+			if issue.IssueEstimatedTime != "" {
+				estTime, _ = strconv.ParseFloat(issue.IssueEstimatedTime, 64)
+			}
+			if issue.IssueSpentTime != "" {
+				spentTime, _ = strconv.ParseFloat(issue.IssueEstimatedTime, 64)
+			}
+			sumEstimated = sumEstimated + estTime
+			sumSpent = sumSpent + spentTime
+		}
+
+		memberData := getAllMemberResult{
+			MemberID: member.MemberId,
+			MemberName: member.MemberName,
+			ProjectName: strings.Join(nameProjectUniq,", "),
+			SumSpentTime: sumSpent,
+			SumEstimatedTime: sumEstimated,
+		}
+		result = append(result, memberData)
+	}
+
+	resp := response{}
+	resp.Code = http.StatusOK
+	resp.Result = result
+	RespondWithJSON(w, http.StatusOK, resp)
+}
+

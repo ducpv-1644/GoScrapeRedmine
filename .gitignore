@@ -16,4 +16,4 @@ vendor/
 .env
 .ideda
 .vscode
-*/members.csv
+seed/members/members.csv
