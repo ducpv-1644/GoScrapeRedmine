@@ -636,19 +636,26 @@ func (a *UserHandler) GetAllProject(w http.ResponseWriter, r *http.Request) {
 }
 
 /// Get Issues Fake data
-
-type Issue struct {
-	IssueId            string `json:"issue_id"`
-	IssueProject       string `json:"issue_project"`
-	IssueTracker       string `json:"issue_tracker"`
-	IssueSubject       string `json:"issue_subject"`
-	IssueStatus        string `json:"issue_status"`
-	IssuePriority      string `json:"issue_priority"`
-	IssueAssignee      string `json:"issue_assignee"`
-	IssueTargetVersion string `json:"issue_target_version"`
-	IssueDueDate       string `json:"issue_due_date"`
-	IssueEstimatedTime string `json:"issue_estimated_time"`
-	IssueDoneRatio     string `json:"issue_done_ratio"`
+type sumSpentTime struct {
+	SumSpentTime float64 `json:"sum_spent_time"`
+}
+type sumEstimatedTime struct {
+	SumEstimatedTime float64 `json:"sum_est_time"`
+}
+type getAllIssueResult struct {
+	IssueId            string  `json:"issue_id"`
+	IssueProject       string  `json:"issue_project"`
+	IssueTracker       string  `json:"issue_tracker"`
+	IssueSubject       string  `json:"issue_subject"`
+	IssueStatus        string  `json:"issue_status"`
+	IssuePriority      string  `json:"issue_priority"`
+	IssueAssignee      string  `json:"issue_assignee"`
+	IssueTargetVersion string  `json:"issue_target_version"`
+	IssueDueDate       string  `json:"issue_due_date"`
+	IssueEstimatedTime string  `json:"issue_estimated_time"`
+	IssueDoneRatio     string  `json:"issue_done_ratio"`
+	SumSpentTime       float64 `json:"sum_spent_time"`
+	SumEstimatedTime   float64 `json:"sum_est_time"`
 }
 
 type MemberIssue struct {
@@ -661,6 +668,8 @@ func (a *UserHandler) GetAllIssue(w http.ResponseWriter, r *http.Request) {
 	db := config.DBConnect()
 	issue := []models.Issue{}
 	member := []models.Member{}
+	var result []getAllIssueResult
+	var issueclone = issue
 	db.Where("member_id = ?", r.URL.Query().Get("id")).Find(&member)
 	for _, e := range member {
 		data := MemberIssue{
@@ -671,10 +680,46 @@ func (a *UserHandler) GetAllIssue(w http.ResponseWriter, r *http.Request) {
 		namMember := data.MemberName
 		fmt.Println(namMember)
 		db.Where("issue_assignee=?", namMember).Find(&issue)
+		sumEstimated := 0.0
+		sumSpent := 0.0
+		for _, issue := range issue {
+			estTime := 0.0
+			spentTime := 0.0
+			if issue.IssueEstimatedTime != "" {
+				estTime, _ = strconv.ParseFloat(issue.IssueEstimatedTime, 64)
+			}
+			if issue.IssueSpentTime != "" {
+				spentTime, _ = strconv.ParseFloat(issue.IssueEstimatedTime, 64)
+			}
+			sumEstimated = sumEstimated + estTime
+			sumSpent = sumSpent + spentTime
+
+		}
+		db.Where("issue_assignee=?", namMember).Find(&issueclone)
+
+		for _, e := range issueclone {
+			issueData := getAllIssueResult{
+				IssueId:            e.IssueId,
+				IssueProject:       e.IssueProject,
+				IssueTracker:       e.IssueTracker,
+				IssueSubject:       e.IssueSubject,
+				IssueStatus:        e.IssueStatus,
+				IssuePriority:      e.IssuePriority,
+				IssueAssignee:      e.IssueAssignee,
+				IssueTargetVersion: e.IssueTargetVersion,
+				IssueDueDate:       e.IssueDueDate,
+				IssueEstimatedTime: e.IssueEstimatedTime,
+				IssueDoneRatio:     e.IssueDoneRatio,
+				SumEstimatedTime:   sumEstimated,
+				SumSpentTime:       sumSpent,
+			}
+			result = append(result, issueData)
+		}
 	}
+
 	resp := response{}
 	resp.Code = http.StatusOK
-	resp.Result = issue
+	resp.Result = result
 	RespondWithJSON(w, http.StatusOK, resp)
 }
 
