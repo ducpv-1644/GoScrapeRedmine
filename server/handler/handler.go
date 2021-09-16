@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt"
+	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -635,27 +636,23 @@ func (a *UserHandler) GetAllProject(w http.ResponseWriter, r *http.Request) {
 	RespondWithJSON(w, http.StatusOK, resp)
 }
 
-/// Get Issues Fake data
-type sumSpentTime struct {
-	SumSpentTime float64 `json:"sum_spent_time"`
-}
-type sumEstimatedTime struct {
+type GetIssueByMember struct {
+	SumSpentTime     float64 `json:"sum_spent_time"`
 	SumEstimatedTime float64 `json:"sum_est_time"`
+	IssueResult      []getAllIssueResult
 }
 type getAllIssueResult struct {
-	IssueId            string  `json:"issue_id"`
-	IssueProject       string  `json:"issue_project"`
-	IssueTracker       string  `json:"issue_tracker"`
-	IssueSubject       string  `json:"issue_subject"`
-	IssueStatus        string  `json:"issue_status"`
-	IssuePriority      string  `json:"issue_priority"`
-	IssueAssignee      string  `json:"issue_assignee"`
-	IssueTargetVersion string  `json:"issue_target_version"`
-	IssueDueDate       string  `json:"issue_due_date"`
-	IssueEstimatedTime string  `json:"issue_estimated_time"`
-	IssueDoneRatio     string  `json:"issue_done_ratio"`
-	SumSpentTime       float64 `json:"sum_spent_time"`
-	SumEstimatedTime   float64 `json:"sum_est_time"`
+	IssueId            string `json:"issue_id"`
+	IssueProject       string `json:"issue_project"`
+	IssueTracker       string `json:"issue_tracker"`
+	IssueSubject       string `json:"issue_subject"`
+	IssueStatus        string `json:"issue_status"`
+	IssuePriority      string `json:"issue_priority"`
+	IssueAssignee      string `json:"issue_assignee"`
+	IssueTargetVersion string `json:"issue_target_version"`
+	IssueDueDate       string `json:"issue_due_date"`
+	IssueEstimatedTime string `json:"issue_estimated_time"`
+	IssueDoneRatio     string `json:"issue_done_ratio"`
 }
 
 type MemberIssue struct {
@@ -669,8 +666,14 @@ func (a *UserHandler) GetAllIssue(w http.ResponseWriter, r *http.Request) {
 	issue := []models.Issue{}
 	member := []models.Member{}
 	var result []getAllIssueResult
+	var result2 []GetIssueByMember
 	var issueclone = issue
-	db.Where("member_id = ?", r.URL.Query().Get("id")).Find(&member)
+	vars := mux.Vars(r)
+	id, ok := vars["id"]
+	if !ok {
+		fmt.Println("id is missing in parameters")
+	}
+	db.Where("member_id = ?", id).Find(&member)
 	for _, e := range member {
 		data := MemberIssue{
 			MemberId:    e.MemberId,
@@ -696,7 +699,6 @@ func (a *UserHandler) GetAllIssue(w http.ResponseWriter, r *http.Request) {
 
 		}
 		db.Where("issue_assignee=?", namMember).Find(&issueclone)
-
 		for _, e := range issueclone {
 			issueData := getAllIssueResult{
 				IssueId:            e.IssueId,
@@ -710,16 +712,20 @@ func (a *UserHandler) GetAllIssue(w http.ResponseWriter, r *http.Request) {
 				IssueDueDate:       e.IssueDueDate,
 				IssueEstimatedTime: e.IssueEstimatedTime,
 				IssueDoneRatio:     e.IssueDoneRatio,
-				SumEstimatedTime:   sumEstimated,
-				SumSpentTime:       sumSpent,
 			}
 			result = append(result, issueData)
 		}
+		issueData2 := GetIssueByMember{
+			SumSpentTime:     sumSpent,
+			SumEstimatedTime: sumEstimated,
+			IssueResult:      result,
+		}
+		result2 = append(result2, issueData2)
 	}
 
 	resp := response{}
 	resp.Code = http.StatusOK
-	resp.Result = result
+	resp.Result = result2
 	RespondWithJSON(w, http.StatusOK, resp)
 }
 
