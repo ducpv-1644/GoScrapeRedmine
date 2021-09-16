@@ -664,68 +664,57 @@ type MemberIssue struct {
 func (a *UserHandler) GetAllIssue(w http.ResponseWriter, r *http.Request) {
 	db := config.DBConnect()
 	issue := []models.Issue{}
-	member := []models.Member{}
+	member := models.Member{}
 	var result []getAllIssueResult
-	var result2 []GetIssueByMember
 	var issueclone = issue
 	vars := mux.Vars(r)
 	id, ok := vars["id"]
 	if !ok {
 		fmt.Println("id is missing in parameters")
 	}
-	db.Where("member_id = ?", id).Find(&member)
-	for _, e := range member {
-		data := MemberIssue{
-			MemberId:    e.MemberId,
-			MemberName:  e.MemberName,
-			MemberEmail: e.MemberEmail,
+	db.Where("member_id = ?", id).First(&member)
+	db.Where("issue_assignee=?", member.MemberName).Find(&issue)
+	sumEstimated := 0.0
+	sumSpent := 0.0
+	for _, issue := range issue {
+		estTime := 0.0
+		spentTime := 0.0
+		if issue.IssueEstimatedTime != "" {
+			estTime, _ = strconv.ParseFloat(issue.IssueEstimatedTime, 64)
 		}
-		namMember := data.MemberName
-		fmt.Println(namMember)
-		db.Where("issue_assignee=?", namMember).Find(&issue)
-		sumEstimated := 0.0
-		sumSpent := 0.0
-		for _, issue := range issue {
-			estTime := 0.0
-			spentTime := 0.0
-			if issue.IssueEstimatedTime != "" {
-				estTime, _ = strconv.ParseFloat(issue.IssueEstimatedTime, 64)
-			}
-			if issue.IssueSpentTime != "" {
-				spentTime, _ = strconv.ParseFloat(issue.IssueEstimatedTime, 64)
-			}
-			sumEstimated = sumEstimated + estTime
-			sumSpent = sumSpent + spentTime
+		if issue.IssueSpentTime != "" {
+			spentTime, _ = strconv.ParseFloat(issue.IssueEstimatedTime, 64)
+		}
+		sumEstimated = sumEstimated + estTime
+		sumSpent = sumSpent + spentTime
 
+	}
+	db.Where("issue_assignee=?", member.MemberName).Find(&issueclone)
+	for _, e := range issueclone {
+		issueData := getAllIssueResult{
+			IssueId:            e.IssueId,
+			IssueProject:       e.IssueProject,
+			IssueTracker:       e.IssueTracker,
+			IssueSubject:       e.IssueSubject,
+			IssueStatus:        e.IssueStatus,
+			IssuePriority:      e.IssuePriority,
+			IssueAssignee:      e.IssueAssignee,
+			IssueTargetVersion: e.IssueTargetVersion,
+			IssueDueDate:       e.IssueDueDate,
+			IssueEstimatedTime: e.IssueEstimatedTime,
+			IssueDoneRatio:     e.IssueDoneRatio,
 		}
-		db.Where("issue_assignee=?", namMember).Find(&issueclone)
-		for _, e := range issueclone {
-			issueData := getAllIssueResult{
-				IssueId:            e.IssueId,
-				IssueProject:       e.IssueProject,
-				IssueTracker:       e.IssueTracker,
-				IssueSubject:       e.IssueSubject,
-				IssueStatus:        e.IssueStatus,
-				IssuePriority:      e.IssuePriority,
-				IssueAssignee:      e.IssueAssignee,
-				IssueTargetVersion: e.IssueTargetVersion,
-				IssueDueDate:       e.IssueDueDate,
-				IssueEstimatedTime: e.IssueEstimatedTime,
-				IssueDoneRatio:     e.IssueDoneRatio,
-			}
-			result = append(result, issueData)
-		}
-		issueData2 := GetIssueByMember{
-			SumSpentTime:     sumSpent,
-			SumEstimatedTime: sumEstimated,
-			IssueResult:      result,
-		}
-		result2 = append(result2, issueData2)
+		result = append(result, issueData)
+	}
+	listIssueByMember := GetIssueByMember{
+		SumSpentTime:     sumSpent,
+		SumEstimatedTime: sumEstimated,
+		IssueResult:      result,
 	}
 
 	resp := response{}
 	resp.Code = http.StatusOK
-	resp.Result = result2
+	resp.Result = listIssueByMember
 	RespondWithJSON(w, http.StatusOK, resp)
 }
 
