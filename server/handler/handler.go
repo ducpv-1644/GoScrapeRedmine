@@ -677,6 +677,7 @@ func (a *UserHandler) GetAllIssue(w http.ResponseWriter, r *http.Request) {
 	}
 	db.Where("member_id = ?", id).First(&member)
 	db.Where("issue_assignee=? AND issue_due_date BETWEEN ? AND ?", member.MemberName, splitRanges[0], splitRanges[1]).Find(&issue)
+
 	sumEstimated := 0.0
 	sumSpent := 0.0
 	for _, issue := range issue {
