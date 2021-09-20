@@ -662,6 +662,9 @@ type MemberIssue struct {
 }
 
 func (a *UserHandler) GetAllIssue(w http.ResponseWriter, r *http.Request) {
+	ranges := r.URL.Query().Get("ranges")
+	splitRanges := strings.Split(ranges, "-")
+
 	db := config.DBConnect()
 	issue := []models.Issue{}
 	member := models.Member{}
@@ -673,7 +676,7 @@ func (a *UserHandler) GetAllIssue(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("id is missing in parameters")
 	}
 	db.Where("member_id = ?", id).First(&member)
-	db.Where("issue_assignee=?", member.MemberName).Find(&issue)
+	db.Where("issue_assignee=? AND issue_due_date BETWEEN ? AND ?", member.MemberName, splitRanges[0], splitRanges[1]).Find(&issue)
 	sumEstimated := 0.0
 	sumSpent := 0.0
 	for _, issue := range issue {
@@ -689,7 +692,7 @@ func (a *UserHandler) GetAllIssue(w http.ResponseWriter, r *http.Request) {
 		sumSpent = sumSpent + spentTime
 
 	}
-	db.Where("issue_assignee=?", member.MemberName).Find(&issueclone)
+	db.Where("issue_assignee=? AND issue_due_date BETWEEN ? AND ?", member.MemberName, splitRanges[0], splitRanges[1]).Find(&issueclone)
 	for _, e := range issueclone {
 		issueData := getAllIssueResult{
 			IssueId:            e.IssueId,
@@ -711,7 +714,6 @@ func (a *UserHandler) GetAllIssue(w http.ResponseWriter, r *http.Request) {
 		SumEstimatedTime: sumEstimated,
 		IssueResult:      result,
 	}
-
 	resp := response{}
 	resp.Code = http.StatusOK
 	resp.Result = listIssueByMember
@@ -727,9 +729,11 @@ type getAllMemberResult struct {
 }
 
 func (a *UserHandler) GetAllMember(w http.ResponseWriter, r *http.Request) {
+	ranges := r.URL.Query().Get("ranges")
+	splitRanges := strings.Split(ranges, "-")
+
 	db := config.DBConnect()
 	var result []getAllMemberResult
-
 	dbissues := []models.Issue{}
 	dbmembers := []models.Member{}
 
@@ -744,7 +748,7 @@ func (a *UserHandler) GetAllMember(w http.ResponseWriter, r *http.Request) {
 		nameProjectUniq := removeDuplicateStr(dbnameProjects)
 
 		issuesWithMember := []models.Issue{}
-		db.Where("issue_assignee = ?", member.MemberName).Find(&issuesWithMember)
+		db.Where("issue_assignee = ? AND issue_due_date BETWEEN ? AND ?", member.MemberName, splitRanges[0], splitRanges[1]).Find(&issuesWithMember)
 		sumEstimated := 0.0
 		sumSpent := 0.0
 		for _, issue := range issuesWithMember {
