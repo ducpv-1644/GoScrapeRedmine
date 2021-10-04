@@ -31,8 +31,8 @@ func main() {
 		return
 	} else if seed == "issue" {
 		fmt.Println("Importing issue")
-		//Redmine.NewRedmine().CrawlRedmine()
-		pherusa.NewPherusa().CrawlPherusa()
+		Redmine.NewRedmine().CrawlRedmine()
+		//pherusa.NewPherusa().CrawlPherusa()
 		return
 	} else if seed != "none" {
 		fmt.Println("Flag seed invalid")
