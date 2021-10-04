@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"go-scrape-redmine/config"
+	"go-scrape-redmine/crawl/pherusa"
 	Redmine "go-scrape-redmine/crawl/redmine"
 	"go-scrape-redmine/models"
 	Member "go-scrape-redmine/seed/members"
@@ -30,7 +31,8 @@ func main() {
 		return
 	} else if seed == "issue" {
 		fmt.Println("Importing issue")
-		Redmine.NewRedmine().CrawlRedmine()
+		//Redmine.NewRedmine().CrawlRedmine()
+		pherusa.NewPherusa().CrawlPherusa()
 		return
 	} else if seed != "none" {
 		fmt.Println("Flag seed invalid")
