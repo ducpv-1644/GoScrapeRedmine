@@ -641,6 +641,7 @@ type GetIssueByMember struct {
 	SumEstimatedTime float64 `json:"sum_est_time"`
 	IssueResult      []getAllIssueResult
 }
+
 type getAllIssueResult struct {
 	IssueId            string `json:"issue_id"`
 	IssueProject       string `json:"issue_project"`
