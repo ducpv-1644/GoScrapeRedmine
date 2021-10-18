@@ -2,17 +2,18 @@ package pherusa
 
 import (
 	"fmt"
-	"github.com/gocolly/colly"
 	"go-scrape-redmine/config"
 	"go-scrape-redmine/crawl"
 	"go-scrape-redmine/models"
-	"gorm.io/gorm"
 	"net/http"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gocolly/colly"
+	"gorm.io/gorm"
 )
 
 func NewPherusa() crawl.Pherusa {
