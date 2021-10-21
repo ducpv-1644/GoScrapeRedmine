@@ -82,6 +82,7 @@ func CrawlIssue(c *colly.Collector, db *gorm.DB) {
 				IssueTargetVersion: tr.DOM.Children().Filter(".fixed_version").Text(),
 				IssueDueDate:       tr.DOM.Children().Filter(".due_date").Text(),
 				IssueEstimatedTime: tr.DOM.Children().Filter(".estimated_hours").Text(),
+				IssueSource:        "pherusa",
 			}
 			var dbIssue models.Issue
 
@@ -165,10 +166,6 @@ func CrawlActivities(c *colly.Collector, db *gorm.DB) {
 	fmt.Println("Crwal activity data finished.")
 }
 
-func CrawlMember(c *colly.Collector, db *gorm.DB) {
-
-}
-
 func getMemberId(url string) string {
 	if strings.Contains(url, "person.png") {
 		return ""
@@ -202,7 +199,7 @@ func (a *Pherusa) CrawlPherusa() {
 	db := config.DBConnect()
 	c := initColly(os.Getenv("HOMEPAGE"))
 	fmt.Println(os.Getenv("HOMEPAGE"))
+	CrawlActivities(c, db)
 	//CrawlProject(c, db)
 	//CrawlIssue(c, db)
-	CrawlActivities(c, db)
 }

@@ -29,12 +29,14 @@ type Project struct {
 	Prefix string  `json:"prefix`
 	Issue  []Issue `gorm:"many2many:project_issue;"`
 }
+
 type Member struct {
 	gorm.Model
 	MemberId    string `json:"menberid"`
 	MemberName  string `json:"menbername"`
 	MemberEmail string `json:"menberemail"`
 }
+
 type Activity struct {
 	gorm.Model
 	MemberId    string `json:"menberid"`
@@ -73,6 +75,7 @@ type Issue struct {
 	IssueAuthor          string `json:"issue_author"`
 	IssueCreated         string `json:"issue_created"`
 	IssueUpdated         string `json:"issue_updated"`
+	IssueSource          string `json:"issue_source"`
 }
 
 func DBMigrate(db *gorm.DB) {
