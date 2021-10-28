@@ -9,6 +9,7 @@ import (
 	"go-scrape-redmine/config"
 	Redmine "go-scrape-redmine/crawl/redmine"
 	"go-scrape-redmine/models"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -637,9 +638,11 @@ func (a *UserHandler) GetAllProject(w http.ResponseWriter, r *http.Request) {
 }
 
 type GetIssueByMember struct {
-	SumSpentTime     float64 `json:"sum_spent_time"`
-	SumEstimatedTime float64 `json:"sum_est_time"`
-	IssueResult      []getAllIssueResult
+	SumSpentTime            float64 `json:"sum_spent_time"`
+	SumEstimatedTime        float64 `json:"sum_est_time"`
+	SumSpentTimeProject     string  `json:"sum_spent_project_time"`
+	SumEstimatedTimeProject string  `json:"sum_est_project_time"`
+	IssueResult             []getAllIssueResult
 }
 
 type getAllIssueResult struct {
@@ -653,6 +656,7 @@ type getAllIssueResult struct {
 	IssueTargetVersion string `json:"issue_target_version"`
 	IssueDueDate       string `json:"issue_due_date"`
 	IssueEstimatedTime string `json:"issue_estimated_time"`
+	IssueSpentTime     string `json:"issue_spentime_time"`
 	IssueDoneRatio     string `json:"issue_done_ratio"`
 }
 
@@ -688,12 +692,13 @@ func (a *UserHandler) GetAllIssue(w http.ResponseWriter, r *http.Request) {
 			estTime, _ = strconv.ParseFloat(issue.IssueEstimatedTime, 64)
 		}
 		if issue.IssueSpentTime != "" {
-			spentTime, _ = strconv.ParseFloat(issue.IssueEstimatedTime, 64)
+			spentTime, _ = strconv.ParseFloat(issue.IssueSpentTime, 64)
 		}
 		sumEstimated = sumEstimated + estTime
 		sumSpent = sumSpent + spentTime
 
 	}
+
 	db.Where("issue_assignee=? AND issue_due_date BETWEEN ? AND ?", member.MemberName, splitRanges[0], splitRanges[1]).Find(&issueclone)
 	for _, e := range issueclone {
 		issueData := getAllIssueResult{
@@ -711,11 +716,45 @@ func (a *UserHandler) GetAllIssue(w http.ResponseWriter, r *http.Request) {
 		}
 		result = append(result, issueData)
 	}
-	listIssueByMember := GetIssueByMember{
-		SumSpentTime:     sumSpent,
-		SumEstimatedTime: sumEstimated,
-		IssueResult:      result,
+	estTime := make(map[string]float64)
+	spenTime := make(map[string]float64)
+	var nameProject []string
+	var nameProjectUniq []string
+	for _, e := range result {
+		nameProject = append(nameProject, e.IssueProject)
+		nameProjectUniq = removeDuplicateStr(nameProject)
 	}
+	for _, e := range nameProjectUniq {
+		estTime[e] = 0.0
+		spenTime[e] = 0.0
+
+	}
+	for _, e := range issueclone {
+		tempEstTime, err := strconv.ParseFloat(e.IssueEstimatedTime, 64)
+		if err != nil {
+			log.Println(err)
+		}
+		tempSpenTime, err := strconv.ParseFloat(e.IssueSpentTime, 64)
+		if err != nil {
+			log.Println(err)
+		}
+		estTime[e.IssueProject] += tempEstTime
+		spenTime[e.IssueProject] += tempSpenTime
+	}
+
+	est, _ := json.Marshal(estTime)
+	estString := string(est[:])
+	spen, _ := json.Marshal(spenTime)
+	spenString := string(spen[:])
+
+	listIssueByMember := GetIssueByMember{
+		SumSpentTime:            sumSpent,
+		SumEstimatedTime:        sumEstimated,
+		SumEstimatedTimeProject: estString,
+		SumSpentTimeProject:     spenString,
+		IssueResult:             result,
+	}
+
 	resp := response{}
 	resp.Code = http.StatusOK
 	resp.Result = listIssueByMember

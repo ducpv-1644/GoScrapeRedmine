@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gocolly/colly"
@@ -73,6 +74,8 @@ func initColly(url string) *colly.Collector {
 	return c
 }
 
+var wg sync.WaitGroup
+
 func crawlProject(c *colly.Collector, db *gorm.DB) {
 
 	c.OnRequest(func(r *colly.Request) {
@@ -95,7 +98,9 @@ func crawlProject(c *colly.Collector, db *gorm.DB) {
 	})
 
 	c.Visit(os.Getenv("HOMEPAGE") + "/projects")
+
 	fmt.Println("Crwal project data finished.")
+	wg.Done()
 }
 
 func crawlActivity(c *colly.Collector, db *gorm.DB) {
@@ -149,6 +154,7 @@ func crawlActivity(c *colly.Collector, db *gorm.DB) {
 
 	c.Visit(os.Getenv("HOMEPAGE") + "/activity")
 	fmt.Println("Crwal activity data finished.")
+	wg.Done()
 }
 
 func crawlIssue(c *colly.Collector, db *gorm.DB) {
@@ -195,6 +201,7 @@ func crawlIssue(c *colly.Collector, db *gorm.DB) {
 	}
 
 	fmt.Println("Crwal issue data finished.")
+	wg.Done()
 }
 
 func crawlIssueDetail(c *colly.Collector, db *gorm.DB) {
@@ -250,7 +257,6 @@ func crawlIssueDetail(c *colly.Collector, db *gorm.DB) {
 			IssueSpentTime:       splitSpentTime[0],
 			IssueCreated:         splitCreatedTime[0],
 			IssueUpdated:         update,
-			IssueSource:          "redmine",
 		}
 
 		db.Model(&dbIssues).Where("issue_id = ?", splitId[1]).Updates(issue)
@@ -269,15 +275,21 @@ func crawlIssueDetail(c *colly.Collector, db *gorm.DB) {
 	for _, element := range issue_id {
 		c.Visit(os.Getenv("HOMEPAGE") + "/issues/" + element)
 	}
+
 	fmt.Println("Crwal issue detail data finished.")
+
 }
 
 func (a *Redmine) CrawlRedmine() {
 	fmt.Println("Cron running...crawling data.")
 	db := config.DBConnect()
 	c := initColly(os.Getenv("HOMEPAGE"))
-	// crawlProject(c, db)
-	// crawlActivity(c, db)
-	// crawlIssue(c, db)
+	wg.Add(3)
+	go crawlProject(c, db)
+	go crawlActivity(c, db)
+	go crawlIssue(c, db)
+	wg.Wait()
+	// fmt.Println("oke")
 	crawlIssueDetail(c, db)
+
 }

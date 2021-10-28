@@ -168,6 +168,10 @@ func CrawlActivities(c *colly.Collector, db *gorm.DB) {
 	fmt.Println("Crwal activity data finished.")
 }
 
+func CrawlMember(c *colly.Collector, db *gorm.DB) {
+
+}
+
 func getMemberId(url string) string {
 	if strings.Contains(url, "person.png") {
 		return ""
