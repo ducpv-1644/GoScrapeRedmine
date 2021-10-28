@@ -78,7 +78,7 @@ func Run(wg *sync.WaitGroup) {
 	headersOk := handlers.AllowedHeaders([]string{"Accept", "content-type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization"})
 	originsOk := handlers.AllowedOrigins([]string{"*"})
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
-
+	// tesst pull
 	router.Handle("/", isAuthorized(handlerx)).Methods("GET")
 	router.HandleFunc("/signup", user_handler.SignUp).Methods("POST")
 	router.HandleFunc("/signin", user_handler.SignIn).Methods("POST")
