@@ -165,6 +165,7 @@ func crawlIssue(c *colly.Collector, db *gorm.DB) {
 				IssueTargetVersion: tr.DOM.Children().Filter(".fixed_version").Text(),
 				IssueDueDate:       tr.DOM.Children().Filter(".due_date").Text(),
 				IssueEstimatedTime: tr.DOM.Children().Filter(".estimated_hours").Text(),
+				IssueSource:        "redmine",
 			}
 			var dbIssue models.Issue
 
@@ -249,6 +250,7 @@ func crawlIssueDetail(c *colly.Collector, db *gorm.DB) {
 			IssueSpentTime:       splitSpentTime[0],
 			IssueCreated:         splitCreatedTime[0],
 			IssueUpdated:         update,
+			IssueSource:          "redmine",
 		}
 
 		db.Model(&dbIssues).Where("issue_id = ?", splitId[1]).Updates(issue)
@@ -274,8 +276,8 @@ func (a *Redmine) CrawlRedmine() {
 	fmt.Println("Cron running...crawling data.")
 	db := config.DBConnect()
 	c := initColly(os.Getenv("HOMEPAGE"))
-	//crawlProject(c, db)
-	//crawlActivity(c, db)
-	//crawlIssue(c, db)
+	// crawlProject(c, db)
+	// crawlActivity(c, db)
+	// crawlIssue(c, db)
 	crawlIssueDetail(c, db)
 }

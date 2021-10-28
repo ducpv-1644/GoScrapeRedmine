@@ -2,12 +2,14 @@ package pherusa
 
 import (
 	"fmt"
-	"github.com/gocolly/colly"
 	"go-scrape-redmine/config"
 	"go-scrape-redmine/crawl"
 	"go-scrape-redmine/models"
-	"gorm.io/gorm"
 	"net/http"
+
+	"github.com/gocolly/colly"
+	"gorm.io/gorm"
+
 	"os"
 	"regexp"
 	"strconv"
@@ -200,6 +202,6 @@ func (a *Pherusa) CrawlPherusa() {
 	c := initColly(os.Getenv("HOMEPAGE"))
 	fmt.Println(os.Getenv("HOMEPAGE"))
 	CrawlActivities(c, db)
-	//CrawlProject(c, db)
-	//CrawlIssue(c, db)
+	CrawlProject(c, db)
+	CrawlIssue(c, db)
 }

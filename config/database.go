@@ -2,10 +2,10 @@ package config
 
 import (
 	"fmt"
-	"strings"
-	"os"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"os"
+	"strings"
 )
 
 func DBConnect() *gorm.DB {
