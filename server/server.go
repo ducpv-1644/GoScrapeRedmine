@@ -40,6 +40,7 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handle
 		}
 
 		bearerToken := strings.Split(authorizationHeader, " ")
+
 		token, err := jwt.Parse(bearerToken[1], func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("Token invalid!")

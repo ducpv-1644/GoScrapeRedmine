@@ -73,6 +73,7 @@ type Issue struct {
 	IssueAuthor          string `json:"issue_author"`
 	IssueCreated         string `json:"issue_created"`
 	IssueUpdated         string `json:"issue_updated"`
+	IssueSource          string `json:"issue_source"`
 }
 
 func DBMigrate(db *gorm.DB) {

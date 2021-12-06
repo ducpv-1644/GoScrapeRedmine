@@ -83,10 +83,14 @@ func CrawlIssue(c *colly.Collector, db *gorm.DB) {
 				IssueTargetVersion: tr.DOM.Children().Filter(".fixed_version").Text(),
 				IssueDueDate:       tr.DOM.Children().Filter(".due_date").Text(),
 				IssueEstimatedTime: tr.DOM.Children().Filter(".estimated_hours").Text(),
+				IssueSource:        "pherusa",
 			}
 			var dbIssue models.Issue
 
 			db.Find(&dbIssue, issue)
+
+			issue.IssueSource = "pherusa"
+
 			if dbIssue == (models.Issue{}) {
 				db.Create(&issue)
 			}
@@ -203,7 +207,7 @@ func (a *Pherusa) CrawlPherusa() {
 	db := config.DBConnect()
 	c := initColly(os.Getenv("HOMEPAGE"))
 	fmt.Println(os.Getenv("HOMEPAGE"))
-	//CrawlProject(c, db)
-	//CrawlIssue(c, db)
+	CrawlProject(c, db)
+	CrawlIssue(c, db)
 	CrawlActivities(c, db)
 }
