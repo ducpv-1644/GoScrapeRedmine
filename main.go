@@ -39,6 +39,9 @@ func main() {
 	} else if seed == "getissue" {
 		Notify.NewNotify(db).GetIssueOverdueStatusNone("pherusa")
 		return
+	} else if seed == "chatwork" {
+		Notify.NotiChatWork()
+		return
 	} else if seed != "none" {
 		fmt.Println("Flag seed invalid")
 		return
@@ -49,6 +52,7 @@ func main() {
 
 	cr := cron.New()
 	cr.AddFunc("0 18 * * *", Redmine.NewRedmine().CrawlRedmine)
+	cr.AddFunc("0 18 * * *", Notify.NotiChatWork)
 	cr.Start()
 
 	go server.Run(&wg)

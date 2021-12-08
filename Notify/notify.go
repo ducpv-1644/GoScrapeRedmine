@@ -7,35 +7,26 @@ import (
 	"go-scrape-redmine/config"
 	"net/http"
 	"os"
+	"strings"
 )
 
-type BotChatWork struct {
-	Service   string   `json:"service"`
-	Channel   string   `json:"channel"`
-	Receivers []string `json:"receivers"`
-	Message   string   `json:"message"`
-}
+func NotiChatWork() {
 
-func API() {
-
-	receivers := []string{os.Getenv("MEMBER1"), os.Getenv("MEMBER2")}
+	receivers := []string{os.Getenv("MEMBER_ONE_NOTI_CHAT_WORK"), os.Getenv("MEMBER_TWO_NOTI_CHAT_WORK")}
 	config.LoadENV()
 	db := config.DBConnect()
 	listReport := NewNotify(db).GetIssueOverdueStatusNone("pherusa")
-	message, err := json.Marshal(listReport[0])
-	if err != nil {
-		fmt.Println("error during marshal message notify: ", err)
-	}
+	fmt.Println("message", strings.Join(listReport, "\n"))
+
 	bot := BotChatWork{
-		Service:   os.Getenv("CHATWORK"),
-		Channel:   os.Getenv("CHANNEL"),
+		Service:   os.Getenv("SERVICE_CHAT_WORK"),
+		Channel:   os.Getenv("CHANNEL_CHAT_WORK"),
 		Receivers: receivers,
-		Message:   string(message),
+		Message:   strings.Join(listReport, "\n"),
 	}
-	//Nguyễn Văn A: New: 1 | InProgress: 2 | Overdue: 2 (1234, 5678) | NoEstimateTime: 1 (7890)
 	body, _ := json.Marshal(bot)
 
-	_, err = http.Post("http://10.0.4.171:5000/notify", "application/json", bytes.NewBuffer(body))
+	_, err := http.Post(os.Getenv("URL_NOTI"), "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		//Failed to read response.
 		panic(err)

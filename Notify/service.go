@@ -100,15 +100,13 @@ func (n notify) GetIssueOverdueStatusNone(source string) []string {
 		if err != nil {
 			fmt.Println("error during marshal")
 		}
-		str := result.MemberName + ":" + string(message)
+		str := "-" + result.MemberName + ":" + string(message)
 		str = strings.ReplaceAll(str, "{", " ")
 		str = strings.ReplaceAll(str, "}", " ")
 		str = strings.ReplaceAll(str, "\\u0026", "&")
 		sArray = append(sArray, str)
 	}
-	for _, str := range sArray {
-		fmt.Println(str)
-	}
+
 	return sArray
 }
 
