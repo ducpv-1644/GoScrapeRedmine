@@ -21,29 +21,29 @@ func (n notify) GetIssueOverdueStatusNone(source string) {
 		fmt.Println("error during get issue: ", err)
 		return
 	}
-	//listMember := make([]string, 0)
+	listMemberMap := make(map[string]string, 0)
+	listMember := make([]string, 0)
+	listStatusMap := make(map[string]string, 0)
 	listStatus := make([]string, 0)
 	for _, issue := range listIssue {
-		//if len(listMember) == 0 {
-		//	listMember = append(listMember, issue.IssueAssignee)
+		if issue.IssueAssignee != "" && issue.IssueAssignee != listMemberMap[issue.IssueAssignee] {
+			listMemberMap[issue.IssueAssignee] = issue.IssueAssignee
+		}
+
+		if issue.IssueStatus != "" && issue.IssueStatus != listStatusMap[issue.IssueStatus] {
+			listStatusMap[issue.IssueStatus] = issue.IssueStatus
+		}
+
+		//if len(listStatus) == 0 && issue.IssueStatus != "" {
+		//	listStatus = append(listStatus, issue.IssueStatus)
 		//} else {
-		//	for _, member := range listMember {
-		//		if issue.IssueAssignee != "" && issue.IssueAssignee != member {
-		//			listMember = append(listMember, issue.IssueAssignee)
+		//	for _, status := range listStatus {
+		//		if issue.IssueStatus != "" && issue.IssueStatus != status {
+		//			listStatus = append(listStatus, issue.IssueStatus)
 		//
 		//		}
 		//	}
 		//}
-		if len(listStatus) == 0 && issue.IssueStatus != "" {
-			listStatus = append(listStatus, issue.IssueStatus)
-		} else {
-			for _, status := range listStatus {
-				if issue.IssueStatus != "" && issue.IssueStatus != status {
-					listStatus = append(listStatus, issue.IssueStatus)
-
-				}
-			}
-		}
 
 		//if issue.IssueStatus == "" {
 		//	countNoStatus++
@@ -61,12 +61,17 @@ func (n notify) GetIssueOverdueStatusNone(source string) {
 		//	}
 		//}s
 	}
-
-	//for _, member := range listMember {
-	//	fmt.Println(member)
-	//}
-	for _, member := range listStatus {
-		fmt.Println(member)
+	for _, member := range listMemberMap {
+		listMember = append(listMember, member)
+	}
+	for _, member := range listMember {
+		fmt.Println("member: ", member)
+	}
+	for _, status := range listStatusMap {
+		listStatus = append(listStatus, status)
+	}
+	for _, status := range listStatus {
+		fmt.Println("status: ", status)
 	}
 
 }
