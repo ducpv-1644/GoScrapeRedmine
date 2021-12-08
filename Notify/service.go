@@ -1,6 +1,7 @@
 package Notify
 
 import (
+	"encoding/json"
 	"fmt"
 	"go-scrape-redmine/models"
 	"gorm.io/gorm"
@@ -22,40 +23,30 @@ type notify struct {
 	db *gorm.DB
 }
 
-func (n notify) GetIssueOverdueStatusNone(source string) []Message {
+func (n notify) GetIssueOverdueStatusNone(source string) []string {
 	//TODO implement me
 	listIssue := make([]models.Issue, 0)
+	sArray := make([]string, 0)
 	err := n.db.Where("issue_source = ?", source).Find(&listIssue).Error
 	if err != nil {
 		fmt.Println("error during get issue: ", err)
-		return []Message{}
+		return sArray
 	}
 	listMemberMap := make(map[string]string, 0)
 	listMember := make([]string, 0)
 
 	status := []string{statusNew, statusResolved, statusPending, statusInvestigated, statusInvestigated}
 
-	//listStatusMap := make(map[string]string, 0)
-	//listStatus := make([]string, 0)
-
 	for _, issue := range listIssue {
 		if issue.IssueAssignee != "" && issue.IssueAssignee != listMemberMap[issue.IssueAssignee] {
 			listMemberMap[issue.IssueAssignee] = issue.IssueAssignee
 		}
-
-		//if issue.IssueStatus != "" && issue.IssueStatus != listStatusMap[issue.IssueStatus] {
-		//	listStatusMap[issue.IssueStatus] = issue.IssueStatus
-		//}
 
 	}
 
 	for _, member := range listMemberMap {
 		listMember = append(listMember, member)
 	}
-	// get full status issue
-	//for _, status := range listStatusMap {
-	//	listStatus = append(listStatus, status)
-	//}
 
 	listResult := make([]Message, 0)
 
@@ -108,13 +99,20 @@ func (n notify) GetIssueOverdueStatusNone(source string) []Message {
 		}
 		result.Report = reports
 		listResult = append(listResult, result)
-
+		message, err := json.Marshal(reports)
+		if err != nil {
+			fmt.Println("error during marshal")
+		}
+		sArray = append(sArray, result.MemberName+" "+string(message)+"/n")
 	}
-	return listResult
+	for _, str := range sArray {
+		fmt.Println(str)
+	}
+	return sArray
 }
 
 type Notify interface {
-	GetIssueOverdueStatusNone(source string) []Message
+	GetIssueOverdueStatusNone(source string) []string
 }
 
 func convertStringToTime(date string) (time.Time, error) {
