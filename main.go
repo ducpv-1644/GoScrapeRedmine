@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"go-scrape-redmine/Notify"
 	"go-scrape-redmine/config"
 	"go-scrape-redmine/crawl/pherusa"
 	_ "go-scrape-redmine/crawl/pherusa"
@@ -32,8 +33,11 @@ func main() {
 		return
 	} else if seed == "issue" {
 		fmt.Println("Importing issue")
-		Redmine.NewRedmine().CrawlRedmine()
+		//Redmine.NewRedmine().CrawlRedmine()
 		pherusa.NewPherusa().CrawlPherusa()
+		return
+	} else if seed == "getissue" {
+		Notify.NewNotify(db).GetIssueOverdueStatusNone("pherusa")
 		return
 	} else if seed != "none" {
 		fmt.Println("Flag seed invalid")
