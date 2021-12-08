@@ -48,8 +48,6 @@ func (n notify) GetIssueOverdueStatusNone(source string) []string {
 		listMember = append(listMember, member)
 	}
 
-	listResult := make([]Message, 0)
-
 	for _, member := range listMember {
 		result := Message{
 			MemberName: member,
@@ -98,12 +96,15 @@ func (n notify) GetIssueOverdueStatusNone(source string) []string {
 
 		}
 		result.Report = reports
-		listResult = append(listResult, result)
 		message, err := json.Marshal(reports)
 		if err != nil {
 			fmt.Println("error during marshal")
 		}
-		sArray = append(sArray, result.MemberName+" "+string(message)+"/n")
+		str := result.MemberName + ":" + string(message)
+		str = strings.ReplaceAll(str, "{", " ")
+		str = strings.ReplaceAll(str, "}", " ")
+		str = strings.ReplaceAll(str, "\\u0026", "&")
+		sArray = append(sArray, str)
 	}
 	for _, str := range sArray {
 		fmt.Println(str)
