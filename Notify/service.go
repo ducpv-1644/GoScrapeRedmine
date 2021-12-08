@@ -9,75 +9,112 @@ import (
 	"time"
 )
 
+var (
+	statusNew          = "New"
+	statusInProgress   = "In Progress"
+	statusInvestigated = "Investigated & Estimated"
+	statusResolved     = "Resolved"
+	statusPending      = "Pending"
+	statusOverdue      = "Overdue"
+)
+
 type notify struct {
 	db *gorm.DB
 }
 
-func (n notify) GetIssueOverdueStatusNone(source string) {
+func (n notify) GetIssueOverdueStatusNone(source string) []Message {
 	//TODO implement me
 	listIssue := make([]models.Issue, 0)
 	err := n.db.Where("issue_source = ?", source).Find(&listIssue).Error
 	if err != nil {
 		fmt.Println("error during get issue: ", err)
-		return
+		return []Message{}
 	}
 	listMemberMap := make(map[string]string, 0)
 	listMember := make([]string, 0)
-	listStatusMap := make(map[string]string, 0)
-	listStatus := make([]string, 0)
+
+	status := []string{statusNew, statusResolved, statusPending, statusInvestigated, statusInvestigated}
+
+	//listStatusMap := make(map[string]string, 0)
+	//listStatus := make([]string, 0)
+
 	for _, issue := range listIssue {
 		if issue.IssueAssignee != "" && issue.IssueAssignee != listMemberMap[issue.IssueAssignee] {
 			listMemberMap[issue.IssueAssignee] = issue.IssueAssignee
 		}
 
-		if issue.IssueStatus != "" && issue.IssueStatus != listStatusMap[issue.IssueStatus] {
-			listStatusMap[issue.IssueStatus] = issue.IssueStatus
-		}
-
-		//if len(listStatus) == 0 && issue.IssueStatus != "" {
-		//	listStatus = append(listStatus, issue.IssueStatus)
-		//} else {
-		//	for _, status := range listStatus {
-		//		if issue.IssueStatus != "" && issue.IssueStatus != status {
-		//			listStatus = append(listStatus, issue.IssueStatus)
-		//
-		//		}
-		//	}
+		//if issue.IssueStatus != "" && issue.IssueStatus != listStatusMap[issue.IssueStatus] {
+		//	listStatusMap[issue.IssueStatus] = issue.IssueStatus
 		//}
 
-		//if issue.IssueStatus == "" {
-		//	countNoStatus++
-		//}
-		//if issue.IssueEstimatedTime == "" {
-		//	countNoEstimate++
-		//}
-		//if issue.IssueStatus == "New" && issue.IssueDueDate != "" {
-		//	issueDate, err := convertStringToTime(issue.IssueDueDate)
-		//	if err == nil && issueDate.After(time.Now()) {
-		//		countOverDue++
-		//	}
-		//	if err != nil {
-		//		fmt.Println("error during check overdue: ", err)
-		//	}
-		//}s
 	}
+
 	for _, member := range listMemberMap {
 		listMember = append(listMember, member)
 	}
-	for _, member := range listMember {
-		fmt.Println("member: ", member)
-	}
-	for _, status := range listStatusMap {
-		listStatus = append(listStatus, status)
-	}
-	for _, status := range listStatus {
-		fmt.Println("status: ", status)
-	}
+	// get full status issue
+	//for _, status := range listStatusMap {
+	//	listStatus = append(listStatus, status)
+	//}
 
+	listResult := make([]Message, 0)
+
+	for _, member := range listMember {
+		result := Message{
+			MemberName: member,
+			Report:     nil,
+		}
+
+		reports := make(map[string]int, 0)
+		for i := 0; i < len(status); i++ {
+			reports[status[i]] = 0
+		}
+
+		for _, issue := range listIssue {
+			if issue.IssueAssignee == result.MemberName {
+				switch issue.IssueStatus {
+				case statusNew:
+					if issue.IssueDueDate != "" {
+						issueDate, err := convertStringToTime(issue.IssueDueDate)
+						if err == nil && issueDate.Before(time.Now()) {
+							reports["Overdue"]++
+						} else {
+							reports[issue.IssueStatus]++
+						}
+						if err != nil {
+							fmt.Println("error during check overdue: ", err)
+						}
+					} else {
+						reports[issue.IssueStatus]++
+					}
+					break
+				case statusInvestigated:
+					reports[issue.IssueStatus]++
+					break
+				case statusPending:
+					reports[issue.IssueStatus]++
+					break
+				case statusInProgress:
+					reports[issue.IssueStatus]++
+					break
+				case statusResolved:
+					reports[issue.IssueStatus]++
+					break
+				default:
+					break
+				}
+			}
+
+		}
+		result.Report = reports
+		listResult = append(listResult, result)
+
+	}
+	return listResult
 }
 
 type Notify interface {
-	GetIssueOverdueStatusNone(source string)
+	GetIssueOverdueStatusNone(source string) []Message
 }
 
 func convertStringToTime(date string) (time.Time, error) {
