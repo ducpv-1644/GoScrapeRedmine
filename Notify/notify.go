@@ -22,13 +22,14 @@ func NotiChatWork() {
 		Service:   os.Getenv("SERVICE_CHAT_WORK"),
 		Channel:   os.Getenv("CHANNEL_CHAT_WORK"),
 		Receivers: receivers,
-		Message:   strings.Join(listReport, "\n"),
+		Message:   "[info]" + strings.Join(listReport, "\n") + "[info]",
 	}
 	body, _ := json.Marshal(bot)
 
 	_, err := http.Post(os.Getenv("URL_NOTI"), "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		//Failed to read response.
+
 		panic(err)
 	}
 	return
