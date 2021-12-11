@@ -22,7 +22,7 @@ func NotiChatWork() {
 		Service:   os.Getenv("SERVICE_CHAT_WORK"),
 		Channel:   os.Getenv("CHANNEL_CHAT_WORK"),
 		Receivers: receivers,
-		Message:   "[info]" + strings.Join(listReport, "\n") + "[info]",
+		Message:   "[info][title] Daily report: [/title]" + strings.Join(listReport, "\n") + "[/info]",
 	}
 	body, _ := json.Marshal(bot)
 

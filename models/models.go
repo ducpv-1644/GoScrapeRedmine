@@ -29,12 +29,14 @@ type Project struct {
 	Prefix string  `json:"prefix`
 	Issue  []Issue `gorm:"many2many:project_issue;"`
 }
+
 type Member struct {
 	gorm.Model
 	MemberId    string `json:"menberid"`
 	MemberName  string `json:"menbername"`
 	MemberEmail string `json:"menberemail"`
 }
+
 type Activity struct {
 	gorm.Model
 	MemberId    string `json:"menberid"`
@@ -74,6 +76,14 @@ type Issue struct {
 	IssueCreated         string `json:"issue_created"`
 	IssueUpdated         string `json:"issue_updated"`
 	IssueSource          string `json:"issue_source"`
+	IssueVersion         string `json:"issue_version"`
+	IssueTarget          string `json:"issue_target"`
+}
+
+type VersionProject struct {
+	gorm.Model
+	IdProject uint   `json:"id_project"`
+	Version   string `json:"version"`
 }
 
 func DBMigrate(db *gorm.DB) {
@@ -82,4 +92,5 @@ func DBMigrate(db *gorm.DB) {
 	db.AutoMigrate(&Member{})
 	db.AutoMigrate(&Activity{})
 	db.AutoMigrate(&Issue{})
+	db.AutoMigrate(&VersionProject{})
 }

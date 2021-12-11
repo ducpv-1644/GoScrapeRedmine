@@ -10,13 +10,18 @@ import (
 	"time"
 )
 
-var (
-	statusNew          = "New"
-	statusInProgress   = "In Progress"
-	statusInvestigated = "Investigated & Estimated"
-	statusResolved     = "Resolved"
-	statusPending      = "Pending"
-	statusOverdue      = "Overdue"
+const (
+	NoEstimate  = "NoEstimate"
+	NoSpentTime = "NoSpentTime"
+	NoDueDate   = "NoDueDate"
+	OverDue     = "OverDue"
+	Doing       = "Doing"
+	Free        = "Free"
+
+	Closed   = "Closed"
+	Resolved = "Resolved"
+	Pending  = "Pending"
+	Rejected = "Rejected"
 )
 
 type notify struct {
@@ -27,7 +32,7 @@ func (n notify) GetIssueOverdueStatusNone(source string) []string {
 	//TODO implement me
 	listIssue := make([]models.Issue, 0)
 	sArray := make([]string, 0)
-	err := n.db.Where("issue_source = ?", source).Find(&listIssue).Error
+	err := n.db.Where("issue_source = ? AND issue_tracker != 'EPIC' and issue_tracker != 'story'", source).Find(&listIssue).Error
 	if err != nil {
 		fmt.Println("error during get issue: ", err)
 		return sArray
@@ -35,7 +40,7 @@ func (n notify) GetIssueOverdueStatusNone(source string) []string {
 	listMemberMap := make(map[string]string, 0)
 	listMember := make([]string, 0)
 
-	status := []string{statusNew, statusResolved, statusPending, statusInvestigated, statusInvestigated}
+	status := []string{NoEstimate, NoSpentTime, NoDueDate, OverDue, Doing, Free}
 
 	for _, issue := range listIssue {
 		if issue.IssueAssignee != "" && issue.IssueAssignee != listMemberMap[issue.IssueAssignee] {
@@ -61,51 +66,73 @@ func (n notify) GetIssueOverdueStatusNone(source string) []string {
 
 		for _, issue := range listIssue {
 			if issue.IssueAssignee == result.MemberName {
-				switch issue.IssueStatus {
-				case statusNew:
-					if issue.IssueDueDate != "" {
-						issueDate, err := convertStringToTime(issue.IssueDueDate)
-						if err == nil && issueDate.Before(time.Now()) {
-							reports["Overdue"]++
-						} else {
-							reports[issue.IssueStatus]++
-						}
-						if err != nil {
-							fmt.Println("error during check overdue: ", err)
-						}
-					} else {
-						reports[issue.IssueStatus]++
+
+				if issue.IssueStartDate != "" && issue.IssueEstimatedTime == "" {
+					startDate, err := convertStringToTime(issue.IssueStartDate)
+					if err != nil {
+						fmt.Println("error during convert string to time: ", err)
+
 					}
-					break
-				case statusInvestigated:
-					reports[issue.IssueStatus]++
-					break
-				case statusPending:
-					reports[issue.IssueStatus]++
-					break
-				case statusInProgress:
-					reports[issue.IssueStatus]++
-					break
-				case statusResolved:
-					reports[issue.IssueStatus]++
-					break
-				default:
-					break
+					if startDate.After(time.Now()) {
+						reports[NoEstimate]++
+					}
 				}
+
+				if issue.IssueDueDate != "" && issue.IssueSpentTime == "" {
+					dueDate, err := convertStringToTime(issue.IssueDueDate)
+					if err != nil {
+						fmt.Println("error during convert string to time: ", err)
+
+					}
+					if dueDate.After(time.Now()) {
+						reports[NoSpentTime]++
+					}
+				}
+
+				if issue.IssueStartDate != "" && issue.IssueDueDate == "" {
+					startDate, err := convertStringToTime(issue.IssueStartDate)
+					if err != nil {
+						fmt.Println("error during convert string to time: ", err)
+
+					}
+					if startDate.After(time.Now()) {
+						reports[NoDueDate]++
+					}
+				}
+
+				if issue.IssueDueDate != "" {
+					dueDate, err := convertStringToTime(issue.IssueDueDate)
+					if err != nil {
+						fmt.Println("error during convert string to time: ", err)
+
+					}
+					if dueDate.After(time.Now()) && !checkFree(issue.IssueStatus) {
+						reports[OverDue]++
+					}
+				}
+
+				if checkFree(issue.IssueStatus) {
+					reports[Free]++
+				}
+
+				if !checkFree(issue.IssueStatus) {
+					reports[Doing]++
+				}
+
 			}
 
 		}
-		result.Report = reports
-		message, err := json.Marshal(reports)
+		messageReport := make(map[string]int, 0)
+		for i := 0; i < len(status); i++ {
+			if reports[status[i]] > 0 {
+				messageReport[status[i]]++
+			}
+		}
+		message, err := json.Marshal(messageReport)
 		if err != nil {
 			fmt.Println("error during marshal")
 		}
-		str := "-" + result.MemberName + ":" + string(message)
-		str = strings.ReplaceAll(str, "\"", "")
-		str = strings.ReplaceAll(str, "{", " ")
-		str = strings.ReplaceAll(str, "}", " ")
-		str = strings.ReplaceAll(str, ",", " | ")
-		str = strings.ReplaceAll(str, "\\u0026", "&")
+		str := formatData(result.MemberName, string(message))
 		sArray = append(sArray, str)
 	}
 	for _, s := range sArray {
@@ -135,6 +162,24 @@ func convertStringToTime(date string) (time.Time, error) {
 
 	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC), nil
 
+}
+
+func checkFree(status string) bool {
+	if status == Closed || status == Resolved || status == Pending || status == Rejected {
+		return true
+	} else {
+		return false
+	}
+}
+
+func formatData(memberName, message string) string {
+	str := "-" + memberName + ":" + message
+	str = strings.ReplaceAll(str, "\"", "")
+	str = strings.ReplaceAll(str, "{", " ")
+	str = strings.ReplaceAll(str, "}", " ")
+	str = strings.ReplaceAll(str, ",", " | ")
+	str = strings.ReplaceAll(str, "\\u0026", "&")
+	return str
 }
 
 func NewNotify(db *gorm.DB) Notify {

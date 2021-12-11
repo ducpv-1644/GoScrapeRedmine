@@ -7,6 +7,7 @@ import (
 	userRepository "go-scrape-redmine/app/users/repository"
 	userUsecase "go-scrape-redmine/app/users/usecase"
 	"go-scrape-redmine/config"
+	"go-scrape-redmine/crawl/pherusa"
 	Redmine "go-scrape-redmine/crawl/redmine"
 	"go-scrape-redmine/models"
 	"log"
@@ -768,6 +769,19 @@ type getAllMemberResult struct {
 	SumEstimatedTime float64
 }
 
+func (a *UserHandler) GetAllVersionProject(w http.ResponseWriter, r *http.Request) {
+	db := config.DBConnect()
+	projectId := r.URL.Query().Get("project_id")
+
+	var dbprojects []models.VersionProject
+	db.Where("id_project = ?", projectId).Find(&dbprojects)
+
+	resp := response{}
+	resp.Code = http.StatusOK
+	resp.Result = dbprojects
+	RespondWithJSON(w, http.StatusOK, resp)
+}
+
 func (a *UserHandler) GetAllMember(w http.ResponseWriter, r *http.Request) {
 	ranges := r.URL.Query().Get("ranges")
 	splitRanges := strings.Split(ranges, "-")
@@ -817,5 +831,39 @@ func (a *UserHandler) GetAllMember(w http.ResponseWriter, r *http.Request) {
 	resp := response{}
 	resp.Code = http.StatusOK
 	resp.Result = result
+	RespondWithJSON(w, http.StatusOK, resp)
+}
+
+func (a *UserHandler) CrawlIssueByVersion(w http.ResponseWriter, r *http.Request) {
+	db := config.DBConnect()
+	projectId := r.URL.Query().Get("project_id")
+	idProject, err := strconv.Atoi(projectId)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = "project id is invalidate"
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+	version := r.URL.Query().Get("version")
+	if version == "" {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = "version is invalidate"
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	err = pherusa.NewPherusa(db).CrawlIssuePherusa(uint(idProject), version)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadGateway
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadGateway, resp)
+		return
+	}
+
+	resp := response{}
+	resp.Code = http.StatusOK
 	RespondWithJSON(w, http.StatusOK, resp)
 }

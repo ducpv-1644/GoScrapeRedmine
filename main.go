@@ -34,10 +34,13 @@ func main() {
 	} else if seed == "issue" {
 		fmt.Println("Importing issue")
 		//Redmine.NewRedmine().CrawlRedmine()
-		pherusa.NewPherusa().CrawlPherusa()
+		pherusa.NewPherusa(db).CrawlPherusa()
 		return
 	} else if seed == "getissue" {
 		Notify.NewNotify(db).GetIssueOverdueStatusNone("pherusa")
+		return
+	} else if seed == "apiIssue" {
+		pherusa.NewPherusa(db).CrawlIssuePherusa(4, "854")
 		return
 	} else if seed == "chatwork" {
 		Notify.NotiChatWork()

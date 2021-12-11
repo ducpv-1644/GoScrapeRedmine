@@ -2,7 +2,6 @@ package pherusa
 
 import (
 	"fmt"
-	"go-scrape-redmine/config"
 	"go-scrape-redmine/crawl"
 	"go-scrape-redmine/models"
 	"net/http"
@@ -16,11 +15,48 @@ import (
 	"gorm.io/gorm"
 )
 
-func NewPherusa() crawl.Pherusa {
-	return &Pherusa{}
+func NewPherusa(db *gorm.DB) crawl.Pherusa {
+	return &Pherusa{
+		db: db,
+	}
 }
 
-type Pherusa struct{}
+type Pherusa struct {
+	db *gorm.DB
+}
+
+func (a *Pherusa) CrawlIssuePherusa(projectId uint, version string) error {
+	c := initColly(os.Getenv("HOMEPAGE"))
+
+	project := models.Project{}
+	err := a.db.First(&project, projectId).Error
+	if err != nil {
+		return err
+	}
+
+	projectName := strings.ReplaceAll(project.Prefix, "/projects/", "")
+	CrawlIssue(c, a.db, projectName, version)
+	a.CreateVersion(version, projectId)
+	return nil
+}
+
+func (a *Pherusa) CreateVersion(version string, projectId uint) error {
+	versionProject := models.VersionProject{}
+	err := a.db.Where("id_project = ? and version = ?", projectId, version).First(&versionProject).Error
+
+	if err == gorm.ErrRecordNotFound {
+		a.db.Create(&models.VersionProject{
+			IdProject: projectId,
+			Version:   version,
+		})
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func initColly(url string) *colly.Collector {
 	c := colly.NewCollector(
@@ -69,7 +105,8 @@ func CrawlProject(c *colly.Collector, db *gorm.DB) {
 	fmt.Println("Crwal project data finished.")
 }
 
-func CrawlIssue(c *colly.Collector, db *gorm.DB) {
+func CrawlIssue(c *colly.Collector, db *gorm.DB, project string, version string) {
+	fmt.Println("Crawl issue")
 	c.OnHTML("div.autoscroll tbody", func(e *colly.HTMLElement) {
 		e.ForEach("tr", func(_ int, tr *colly.HTMLElement) {
 			issue := models.Issue{
@@ -82,7 +119,9 @@ func CrawlIssue(c *colly.Collector, db *gorm.DB) {
 				IssueAssignee:      tr.DOM.Children().Filter(".assigned_to").Text(),
 				IssueTargetVersion: tr.DOM.Children().Filter(".fixed_version").Text(),
 				IssueDueDate:       tr.DOM.Children().Filter(".due_date").Text(),
+				IssueStartDate:     tr.DOM.Children().Filter(".start_date").Text(),
 				IssueEstimatedTime: tr.DOM.Children().Filter(".estimated_hours").Text(),
+				IssueDoneRatio:     tr.DOM.Children().Filter(".done_ratio").Text(),
 				IssueSource:        "pherusa",
 			}
 			var dbIssue models.Issue
@@ -106,13 +145,10 @@ func CrawlIssue(c *colly.Collector, db *gorm.DB) {
 		RandomDelay: 1 * time.Second,
 	})
 
-	c.OnRequest(func(r *colly.Request) {
-		fmt.Println("Visiting", r.URL.String())
-	})
-
 	for i := 1; i <= 5; i++ {
-		fullURL := fmt.Sprintf(os.Getenv("HOMEPAGE") + "/issues?page=" + strconv.Itoa(i) + "&per_page=100")
+		fullURL := fmt.Sprintf(os.Getenv("HOMEPAGE") + "/projects/" + project + "/issues" + getUrlFromVersion(version))
 		c.Visit(fullURL)
+
 	}
 
 	fmt.Println("Crwal issue data finished.")
@@ -170,85 +206,6 @@ func CrawlActivities(c *colly.Collector, db *gorm.DB) {
 	fmt.Println("Crwal activity data finished.")
 }
 
-func crawlIssueDetail(c *colly.Collector, db *gorm.DB) {
-	fmt.Println("crawl issuedetail")
-	var dbIssues models.Issue
-	var issue_id []string
-	var createdTime string
-	var updatedTime string
-	var update string
-	var splitCreatedTime []string
-	var splitUpdatedTime []string
-	c.OnHTML("div#content", func(e *colly.HTMLElement) {
-
-		desIssue := e.ChildAttrs("div.issue > p >a ", "title")
-
-		if len(desIssue) == 1 {
-			createdTime = desIssue[0]
-			splitCreatedTime = strings.Split(createdTime, " ")
-			fmt.Println(splitCreatedTime[0])
-
-			updatedTime := [...]string{"null"}
-			update = updatedTime[0]
-			fmt.Println(update)
-
-		} else {
-			createdTime = desIssue[0]
-			splitCreatedTime = strings.Split(createdTime, " ")
-			fmt.Println(splitCreatedTime[0])
-			updatedTime = desIssue[1]
-			splitUpdatedTime = strings.Split(updatedTime, " ")
-			update = splitUpdatedTime[0]
-		}
-
-		// id idIssues
-		idIssues := e.DOM.Children().Filter("h2").Text()
-		splitId := strings.Split(idIssues, "#")
-
-		divAttributes := e.DOM.Children().Filter("div.issue").Children().Filter("div.attributes")
-		splitContentLeft := divAttributes.Children().Filter("div.splitcontent").Children().Filter("div.splitcontentleft").Children()
-
-		IssueSpentTime := splitContentLeft.Filter("div.spent-time.attribute").Children().Filter("div.value").Text()
-		splitSpentTime := strings.Split(IssueSpentTime, " ")
-
-		issue := models.Issue{
-			IssueCategory:        splitContentLeft.Filter("div.category.attribute").Children().Filter("div.value").Text(),
-			IssueActualEndDate:   splitContentLeft.Filter("div.cf_11.attribute").Children().Filter("div.value").Text(),
-			IssueStoryPoint:      splitContentLeft.Filter("div.cf_7.attribute").Children().Filter("div.value").Text(),
-			IssueLink:            "https://dev.sun-asterisk.com/issues/" + splitId[1],
-			IssueActualStartDate: splitContentLeft.Filter("div.cf_10.attribute").Children().Filter("div.value").Text(),
-			IssueGitUrl:          splitContentLeft.Filter("div.cf_23.attribute").Children().Filter("div.value").Text(),
-			IssueQaDeadline:      splitContentLeft.Filter("div.cf_27.attribute").Children().Filter("div.value").Text(),
-			IssueStartDate:       splitContentLeft.Filter("div.start-date.attribute").Children().Filter("div.value").Text(),
-			IssueDoneRatio:       splitContentLeft.Filter("div.progress.attribute").Children().Filter("div.value").Children().Filter("p.percent").Text(),
-			IssueSpentTime:       splitSpentTime[0],
-			IssueCreated:         splitCreatedTime[0],
-			IssueUpdated:         update,
-			IssueDueDate:         splitContentLeft.Filter("div.due-date.attribute").Children().Filter("div.value").Text(),
-			IssueSource:          "pherusa",
-		}
-
-		db.Model(&dbIssues).Where("issue_id = ?", splitId[1]).Updates(issue)
-	})
-
-	c.Limit(&colly.LimitRule{
-		DomainGlob:  "*",
-		RandomDelay: 1 * time.Second,
-	})
-
-	c.OnRequest(func(r *colly.Request) {
-		fmt.Println("Visiting", r.URL.String())
-	})
-
-	db.Model(&dbIssues).Pluck("issue_id", &issue_id)
-	for _, element := range issue_id {
-		c.Visit(os.Getenv("HOMEPAGE") + "/issues/" + element)
-	}
-
-	fmt.Println("Crwal issue detail data finished.")
-
-}
-
 func getMemberId(url string) string {
 	if strings.Contains(url, "person.png") {
 		return ""
@@ -256,6 +213,14 @@ func getMemberId(url string) string {
 	re, _ := regexp.Compile(`(avatar\?id=)\d+`)
 	result := strings.Split(string(re.Find([]byte(url))), "=")
 	return result[1]
+}
+
+func getUrlFromVersion(version string) string {
+	if version != "" {
+		return ""
+	} else {
+		return "?utf8=✓&set_filter=1&sort=id:desc&f[]=fixed_version_id&op[fixed_version_id]==&v[fixed_version_id][]=" + version + "&f[]=tracker_id&op[tracker_id]=!&v[tracker_id][]=4&v[tracker_id][]=15&f[]=&c[]=status&c[]=assigned_to&c[]=estimated_hours&c[]=spent_hours&c[]=start_date&c[]=due_date&c[]=done_ratio&c[]=project&group_by=&t[]="
+	}
 }
 
 func getTypeIssue(t string) string {
@@ -279,10 +244,7 @@ func getTypeIssue(t string) string {
 
 func (a *Pherusa) CrawlPherusa() {
 	fmt.Println("Cron running...crawling data.")
-	db := config.DBConnect()
 	c := initColly(os.Getenv("HOMEPAGE"))
-	go CrawlProject(c, db)
-	go CrawlActivities(c, db)
-	CrawlIssue(c, db)
-	crawlIssueDetail(c, db)
+	CrawlProject(c, a.db)
+	CrawlActivities(c, a.db)
 }
