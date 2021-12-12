@@ -44,7 +44,7 @@ func main() {
 		return
 	} else if seed == "noti" {
 		Notify.NotiChatWork()
-		Notify.NotiChatWork()
+		Notify.NotiSlack()
 		return
 	} else if seed != "none" {
 		fmt.Println("Flag seed invalid")
