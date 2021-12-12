@@ -6,7 +6,7 @@ import (
 	"go-scrape-redmine/Notify"
 	"go-scrape-redmine/config"
 	"go-scrape-redmine/crawl/pherusa"
-	_ "go-scrape-redmine/crawl/pherusa"
+	Pherusa "go-scrape-redmine/crawl/pherusa"
 	Redmine "go-scrape-redmine/crawl/redmine"
 	"go-scrape-redmine/models"
 	Member "go-scrape-redmine/seed/members"
@@ -40,9 +40,10 @@ func main() {
 		Notify.NewNotify(db).GetIssueOverdueStatusNone("pherusa")
 		return
 	} else if seed == "apiIssue" {
-		pherusa.NewPherusa(db).CrawlIssuePherusa(4, "854")
+		pherusa.NewPherusa(db).CrawlIssuePherusa(3, "854")
 		return
-	} else if seed == "chatwork" {
+	} else if seed == "noti" {
+		Notify.NotiChatWork()
 		Notify.NotiChatWork()
 		return
 	} else if seed != "none" {
@@ -55,7 +56,9 @@ func main() {
 
 	cr := cron.New()
 	cr.AddFunc("0 18 * * *", Redmine.NewRedmine().CrawlRedmine)
+	cr.AddFunc("0 18 * * *", Pherusa.NewPherusa(db).CrawlPherusa)
 	cr.AddFunc("0 18 * * *", Notify.NotiChatWork)
+	cr.AddFunc("0 18 * * *", Notify.NotiSlack)
 	cr.Start()
 
 	go server.Run(&wg)
