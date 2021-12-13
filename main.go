@@ -37,14 +37,14 @@ func main() {
 		pherusa.NewPherusa(db).CrawlPherusa()
 		return
 	} else if seed == "getissue" {
-		Notify.NewNotify(db).GetIssueOverdueStatusNone("pherusa", "854")
+		Notify.NewNotify(db).GetReportMember("pherusa", "854")
 		return
 	} else if seed == "apiIssue" {
 		pherusa.NewPherusa(db).CrawlIssuePherusa(3, "854")
 		return
 	} else if seed == "noti" {
-		Notify.NotiChatWork()
-		Notify.NotiSlack()
+		Notify.NotiChatWork("854")
+		Notify.NotiSlack("854")
 		return
 	} else if seed != "none" {
 		fmt.Println("Flag seed invalid")
@@ -57,8 +57,8 @@ func main() {
 	cr := cron.New()
 	cr.AddFunc("0 18 * * *", Redmine.NewRedmine().CrawlRedmine)
 	cr.AddFunc("0 18 * * *", Pherusa.NewPherusa(db).CrawlPherusa)
-	cr.AddFunc("0 18 * * *", Notify.NotiChatWork)
-	cr.AddFunc("0 18 * * *", Notify.NotiSlack)
+	//cr.AddFunc("0 18 * * *", Notify.NotiChatWork("854"))
+	//cr.AddFunc("0 18 * * *", Notify.NotiSlack("854"))
 	cr.Start()
 
 	go server.Run(&wg)

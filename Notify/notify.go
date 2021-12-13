@@ -7,22 +7,26 @@ import (
 	"go-scrape-redmine/config"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 )
 
-func NotiChatWork() {
+func NotiChatWork(version string) {
 
 	receivers := []string{os.Getenv("MEMBER_ONE_NOTI_CHAT_WORK"), os.Getenv("MEMBER_TWO_NOTI_CHAT_WORK")}
 	config.LoadENV()
 	db := config.DBConnect()
-	listReport := NewNotify(db).GetIssueOverdueStatusNone("pherusa", "854")
+	listReport := NewNotify(db).GetReportMember("pherusa", version)
 	fmt.Println("message", strings.Join(listReport, "\n"))
+	t1 := time.Now()
+	timeStr := convertDateToString(&t1)
 
 	bot := BotChatWork{
 		Service:   os.Getenv("SERVICE_CHAT_WORK"),
 		Channel:   os.Getenv("CHANNEL_CHAT_WORK"),
 		Receivers: receivers,
-		Message:   "[info][title] Daily report: [/title]" + strings.Join(listReport, "\n") + "[/info]",
+		Message:   "[info][title]" + timeStr + ": [/title]" + strings.Join(listReport, "\n") + "[/info]",
 	}
 	body, _ := json.Marshal(bot)
 
@@ -34,12 +38,12 @@ func NotiChatWork() {
 	}
 	return
 }
-func NotiSlack() {
+func NotiSlack(version string) {
 
 	receivers := []string{os.Getenv("MEMBER_ONE_NOTI_SLACK"), os.Getenv("MEMBER_TWO_NOTI_SLACK")}
 	config.LoadENV()
 	db := config.DBConnect()
-	listReport := NewNotify(db).GetIssueOverdueStatusNone("pherusa", "854")
+	listReport := NewNotify(db).GetReportMember("pherusa", version)
 	fmt.Println("message", strings.Join(listReport, "\n"))
 
 	bot := BotChatWork{
@@ -57,4 +61,15 @@ func NotiSlack() {
 		panic(err)
 	}
 	return
+}
+
+func convertDateToString(time *time.Time) string {
+	if time == nil {
+		return ""
+	}
+
+	date := strconv.Itoa(time.Day())
+	month := strconv.Itoa(int(time.Month()))
+	year := strconv.Itoa(time.Year())
+	return date + "/" + month + "/" + year
 }

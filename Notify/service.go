@@ -28,21 +28,23 @@ type notify struct {
 	db *gorm.DB
 }
 
-func (n notify) GetIssueOverdueStatusNone(source string, version string) []string {
+func (n notify) GetReportMember(source string, version string) ([]string, string) {
 	//TODO implement me
 	listIssue := make([]models.Issue, 0)
 	sArray := make([]string, 0)
-	err := n.db.Where("issue_source = ? AND issue_tracker != 'EPIC' and issue_tracker != 'story'", source, version).Find(&listIssue).Error
+	err := n.db.Where("issue_source = ? AND issue_version = ?  AND issue_tracker != 'EPIC' and issue_tracker != 'story'", source, version).Find(&listIssue).Error
 	if err != nil {
 		fmt.Println("error during get issue: ", err)
-		return sArray
+		return sArray, ""
 	}
 	listMemberMap := make(map[string]string, 0)
 	listMember := make([]string, 0)
 
 	status := []string{NoEstimate, NoSpentTime, NoDueDate, OverDue, Doing, Free}
+	targetVersion := ""
 
 	for _, issue := range listIssue {
+		targetVersion = issue.IssueTargetVersion
 		if issue.IssueAssignee != "" && issue.IssueAssignee != listMemberMap[issue.IssueAssignee] {
 			listMemberMap[issue.IssueAssignee] = issue.IssueAssignee
 		}
@@ -146,11 +148,11 @@ func (n notify) GetIssueOverdueStatusNone(source string, version string) []strin
 		sArray = append(sArray, str)
 	}
 
-	return sArray
+	return sArray, targetVersion
 }
 
 type Notify interface {
-	GetIssueOverdueStatusNone(source string, version string) []string
+	GetReportMember(source string, version string) ([]string, string)
 }
 
 func convertStringToTime(date string) (time.Time, error) {
