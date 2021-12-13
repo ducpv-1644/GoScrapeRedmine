@@ -17,7 +17,7 @@ func NotiChatWork(version string) {
 	receivers := []string{os.Getenv("MEMBER_ONE_NOTI_CHAT_WORK"), os.Getenv("MEMBER_TWO_NOTI_CHAT_WORK")}
 	config.LoadENV()
 	db := config.DBConnect()
-	listReport := NewNotify(db).GetReportMember("pherusa", version)
+	listReport, targetVersion := NewNotify(db).GetReportMember("pherusa", version)
 	fmt.Println("message", strings.Join(listReport, "\n"))
 	t1 := time.Now()
 	timeStr := convertDateToString(&t1)
@@ -26,7 +26,7 @@ func NotiChatWork(version string) {
 		Service:   os.Getenv("SERVICE_CHAT_WORK"),
 		Channel:   os.Getenv("CHANNEL_CHAT_WORK"),
 		Receivers: receivers,
-		Message:   "[info][title]" + timeStr + ": [/title]" + strings.Join(listReport, "\n") + "[/info]",
+		Message:   "[info][title]" + targetVersion + "-" + timeStr + ": [/title]" + strings.Join(listReport, "\n") + "[/info]",
 	}
 	body, _ := json.Marshal(bot)
 
@@ -43,14 +43,17 @@ func NotiSlack(version string) {
 	receivers := []string{os.Getenv("MEMBER_ONE_NOTI_SLACK"), os.Getenv("MEMBER_TWO_NOTI_SLACK")}
 	config.LoadENV()
 	db := config.DBConnect()
-	listReport := NewNotify(db).GetReportMember("pherusa", version)
+	listReport, targetVersion := NewNotify(db).GetReportMember("pherusa", version)
 	fmt.Println("message", strings.Join(listReport, "\n"))
+	t1 := time.Now()
+	timeStr := convertDateToString(&t1)
 
 	bot := BotChatWork{
 		Service:   os.Getenv("SERVICE_SLACK_SLACK"),
 		Channel:   os.Getenv("CHANNEL_SLACK"),
 		Receivers: receivers,
-		Message:   "Daily report: " + strings.Join(listReport, "\n") + "",
+		//Message:   "Daily report: " + strings.Join(listReport, "\n") + "",
+		Message: targetVersion + "-" + timeStr + ":" + strings.Join(listReport, "\n") + "[/info]",
 	}
 	body, _ := json.Marshal(bot)
 
