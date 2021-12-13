@@ -15,7 +15,7 @@ func NotiChatWork() {
 	receivers := []string{os.Getenv("MEMBER_ONE_NOTI_CHAT_WORK"), os.Getenv("MEMBER_TWO_NOTI_CHAT_WORK")}
 	config.LoadENV()
 	db := config.DBConnect()
-	listReport := NewNotify(db).GetIssueOverdueStatusNone("pherusa")
+	listReport := NewNotify(db).GetIssueOverdueStatusNone("pherusa", "854")
 	fmt.Println("message", strings.Join(listReport, "\n"))
 
 	bot := BotChatWork{
@@ -36,25 +36,25 @@ func NotiChatWork() {
 }
 func NotiSlack() {
 
-    receivers := []string{os.Getenv("MEMBER_ONE_NOTI_SLACK"), os.Getenv("MEMBER_TWO_NOTI_SLACK")}
-    config.LoadENV()
-    db := config.DBConnect()
-    listReport := NewNotify(db).GetIssueOverdueStatusNone("pherusa")
-    fmt.Println("message", strings.Join(listReport, "\n"))
+	receivers := []string{os.Getenv("MEMBER_ONE_NOTI_SLACK"), os.Getenv("MEMBER_TWO_NOTI_SLACK")}
+	config.LoadENV()
+	db := config.DBConnect()
+	listReport := NewNotify(db).GetIssueOverdueStatusNone("pherusa", "854")
+	fmt.Println("message", strings.Join(listReport, "\n"))
 
-    bot := BotChatWork{
-	Service:   os.Getenv("SERVICE_SLACK_SLACK"),
-	Channel:   os.Getenv("CHANNEL_SLACK"),
-	Receivers: receivers,
-	Message:   "Daily report: " + strings.Join(listReport, "\n") + "",
-    }
-    body, _ := json.Marshal(bot)
+	bot := BotChatWork{
+		Service:   os.Getenv("SERVICE_SLACK_SLACK"),
+		Channel:   os.Getenv("CHANNEL_SLACK"),
+		Receivers: receivers,
+		Message:   "Daily report: " + strings.Join(listReport, "\n") + "",
+	}
+	body, _ := json.Marshal(bot)
 
-    _, err := http.Post(os.Getenv("URL_NOTI"), "application/json", bytes.NewBuffer(body))
-    if err != nil {
-	//Failed to read response.
+	_, err := http.Post(os.Getenv("URL_NOTI"), "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		//Failed to read response.
 
-	panic(err)
-    }
-    return
+		panic(err)
+	}
+	return
 }

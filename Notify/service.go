@@ -28,11 +28,11 @@ type notify struct {
 	db *gorm.DB
 }
 
-func (n notify) GetIssueOverdueStatusNone(source string) []string {
+func (n notify) GetIssueOverdueStatusNone(source string, version string) []string {
 	//TODO implement me
 	listIssue := make([]models.Issue, 0)
 	sArray := make([]string, 0)
-	err := n.db.Where("issue_source = ? AND issue_tracker != 'EPIC' and issue_tracker != 'story'", source).Find(&listIssue).Error
+	err := n.db.Where("issue_source = ? AND issue_tracker != 'EPIC' and issue_tracker != 'story'", source, version).Find(&listIssue).Error
 	if err != nil {
 		fmt.Println("error during get issue: ", err)
 		return sArray
@@ -63,6 +63,8 @@ func (n notify) GetIssueOverdueStatusNone(source string) []string {
 		for i := 0; i < len(status); i++ {
 			reports[status[i]] = 0
 		}
+
+		overDue := make([]string, 0)
 
 		for _, issue := range listIssue {
 			if issue.IssueAssignee == result.MemberName {
@@ -100,23 +102,24 @@ func (n notify) GetIssueOverdueStatusNone(source string) []string {
 					}
 				}
 
-				if issue.IssueDueDate != "" {
-					dueDate, err := convertStringToTime(issue.IssueDueDate)
-					if err != nil {
-						fmt.Println("error during convert string to time: ", err)
-
-					}
-					if dueDate.After(time.Now()) && !checkFree(issue.IssueStatus) {
-						reports[OverDue]++
-					}
-				}
-
 				if checkFree(issue.IssueStatus) {
 					reports[Free]++
 				}
 
 				if !checkFree(issue.IssueStatus) {
 					reports[Doing]++
+				}
+
+				if issue.IssueDueDate != "" {
+					dueDate, err := convertStringToTime(issue.IssueDueDate)
+					if err != nil {
+						fmt.Println("error during convert string to time: ", err)
+
+					}
+					if dueDate.Before(time.Now()) && !checkFree(issue.IssueStatus) {
+						overDue = append(overDue, issue.IssueId)
+						reports[OverDue]++
+					}
 				}
 
 			}
@@ -132,7 +135,14 @@ func (n notify) GetIssueOverdueStatusNone(source string) []string {
 		if err != nil {
 			fmt.Println("error during marshal")
 		}
-		str := formatData(result.MemberName, string(message))
+
+		strMessage := string(message)
+
+		if len(overDue) > 0 {
+			strMessage = strMessage + "(" + strings.Join(overDue, " ") + ")"
+		}
+
+		str := formatData(result.MemberName, strMessage)
 		sArray = append(sArray, str)
 	}
 	for _, s := range sArray {
@@ -142,7 +152,7 @@ func (n notify) GetIssueOverdueStatusNone(source string) []string {
 }
 
 type Notify interface {
-	GetIssueOverdueStatusNone(source string) []string
+	GetIssueOverdueStatusNone(source string, version string) []string
 }
 
 func convertStringToTime(date string) (time.Time, error) {

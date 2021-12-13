@@ -37,7 +37,7 @@ func main() {
 		pherusa.NewPherusa(db).CrawlPherusa()
 		return
 	} else if seed == "getissue" {
-		Notify.NewNotify(db).GetIssueOverdueStatusNone("pherusa")
+		Notify.NewNotify(db).GetIssueOverdueStatusNone("pherusa", "854")
 		return
 	} else if seed == "apiIssue" {
 		pherusa.NewPherusa(db).CrawlIssuePherusa(3, "854")
