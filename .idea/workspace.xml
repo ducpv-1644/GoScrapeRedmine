@@ -5,7 +5,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="80847c7c-dcfa-44b0-9429-5856203f120a" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/crawl/pherusa/crawl_pherusa.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawl/pherusa/crawl_pherusa.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />

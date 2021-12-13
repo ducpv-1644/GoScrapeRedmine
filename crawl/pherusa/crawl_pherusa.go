@@ -121,7 +121,6 @@ func CrawlIssue(c *colly.Collector, db *gorm.DB, project string, version string)
 				IssueDueDate:       tr.DOM.Children().Filter(".due_date").Text(),
 				IssueStartDate:     tr.DOM.Children().Filter(".start_date").Text(),
 				IssueEstimatedTime: tr.DOM.Children().Filter(".estimated_hours").Text(),
-				IssueSpentTime:     tr.DOM.Children().Filter(".spent_hours").Text(),
 				IssueDoneRatio:     tr.DOM.Children().Filter(".done_ratio").Text(),
 				IssueSource:        "pherusa",
 				IssueVersion:       version,
@@ -129,6 +128,8 @@ func CrawlIssue(c *colly.Collector, db *gorm.DB, project string, version string)
 			var dbIssue models.Issue
 
 			db.Find(&dbIssue, issue)
+
+			issue.IssueSource = "pherusa"
 
 			if dbIssue == (models.Issue{}) {
 				db.Create(&issue)
@@ -216,10 +217,10 @@ func getMemberId(url string) string {
 }
 
 func getUrlFromVersion(version string) string {
-	if version != "" {
+	if version == "" {
 		return ""
 	} else {
-		return "?utf8=✓&set_filter=1&sort=id:desc&f[]=fixed_version_id&op[fixed_version_id]==&v[fixed_version_id][]=" + version + "&f[]=tracker_id&op[tracker_id]=!&v[tracker_id][]=4&v[tracker_id][]=15&f[]=&c[]=status&c[]=assigned_to&c[]=estimated_hours&c[]=spent_hours&c[]=start_date&c[]=due_date&c[]=done_ratio&c[]=project&group_by=&t[]="
+		return "?set_filter=1&sort=id:desc&f[]=fixed_version_id&op[fixed_version_id]==&v[fixed_version_id][]=" + version + "&f[]=tracker_id&op[tracker_id]=!&v[tracker_id][]=4&v[tracker_id][]=15&f[]=&c[]=status&c[]=assigned_to&c[]=estimated_hours&c[]=spent_hours&c[]=start_date&c[]=due_date&c[]=done_ratio&c[]=project&group_by=&t[]="
 	}
 }
 
