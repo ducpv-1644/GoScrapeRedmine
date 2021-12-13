@@ -121,14 +121,14 @@ func CrawlIssue(c *colly.Collector, db *gorm.DB, project string, version string)
 				IssueDueDate:       tr.DOM.Children().Filter(".due_date").Text(),
 				IssueStartDate:     tr.DOM.Children().Filter(".start_date").Text(),
 				IssueEstimatedTime: tr.DOM.Children().Filter(".estimated_hours").Text(),
+				IssueSpentTime:     tr.DOM.Children().Filter(".spent_hours").Text(),
 				IssueDoneRatio:     tr.DOM.Children().Filter(".done_ratio").Text(),
 				IssueSource:        "pherusa",
+				IssueVersion:       version,
 			}
 			var dbIssue models.Issue
 
 			db.Find(&dbIssue, issue)
-
-			issue.IssueSource = "pherusa"
 
 			if dbIssue == (models.Issue{}) {
 				db.Create(&issue)
