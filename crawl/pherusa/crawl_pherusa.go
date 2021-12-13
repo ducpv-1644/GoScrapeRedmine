@@ -149,7 +149,7 @@ func CrawlIssue(c *colly.Collector, db *gorm.DB, project string, version string)
 	for i := 1; i <= 5; i++ {
 		fullURL := fmt.Sprintf(os.Getenv("HOMEPAGE") + "/projects/" + project + "/issues" + getUrlFromVersion(version))
 		c.Visit(fullURL)
-
+		fmt.Println(fullURL)
 	}
 
 	fmt.Println("Crwal issue data finished.")

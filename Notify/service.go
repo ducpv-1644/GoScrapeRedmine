@@ -138,16 +138,14 @@ func (n notify) GetIssueOverdueStatusNone(source string, version string) []strin
 
 		strMessage := string(message)
 
-		if len(overDue) > 0 {
-			strMessage = strMessage + "(" + strings.Join(overDue, " ") + ")"
-		}
-
 		str := formatData(result.MemberName, strMessage)
+
+		if len(overDue) > 0 {
+			str = str + "(" + strings.Join(overDue, ",") + ")"
+		}
 		sArray = append(sArray, str)
 	}
-	for _, s := range sArray {
-		fmt.Println(s)
-	}
+
 	return sArray
 }
 
