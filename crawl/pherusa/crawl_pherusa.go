@@ -36,7 +36,10 @@ func (a *Pherusa) CrawlIssuePherusa(projectId uint, version string) error {
 
 	projectName := strings.ReplaceAll(project.Prefix, "/projects/", "")
 	CrawlIssue(c, a.db, projectName, version)
-	a.CreateVersion(version, projectId)
+	err = a.CreateVersion(version, projectId)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -48,6 +51,7 @@ func (a *Pherusa) CreateVersion(version string, projectId uint) error {
 		a.db.Create(&models.VersionProject{
 			IdProject: projectId,
 			Version:   version,
+			Current:   false,
 		})
 		return nil
 	}

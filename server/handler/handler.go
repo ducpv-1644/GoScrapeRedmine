@@ -10,6 +10,7 @@ import (
 	"go-scrape-redmine/crawl/pherusa"
 	Redmine "go-scrape-redmine/crawl/redmine"
 	"go-scrape-redmine/models"
+	"gorm.io/gorm"
 	"log"
 	"net/http"
 	"strconv"
@@ -860,6 +861,68 @@ func (a *UserHandler) CrawlIssueByVersion(w http.ResponseWriter, r *http.Request
 		resp.Code = http.StatusBadGateway
 		resp.Message = err.Error()
 		RespondWithJSON(w, http.StatusBadGateway, resp)
+		return
+	}
+
+	resp := response{}
+	resp.Code = http.StatusOK
+	RespondWithJSON(w, http.StatusOK, resp)
+
+}
+
+func (a *UserHandler) SetCurrentVersion(w http.ResponseWriter, r *http.Request) {
+	db := config.DBConnect()
+
+	version := models.VersionProject{}
+	err := json.NewDecoder(r.Body).Decode(&version)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	var oldVersion *models.VersionProject
+	err = db.Where("current = true").First(&oldVersion).Error
+
+	if err != nil && err != gorm.ErrRecordNotFound {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+	oldVersion.Current = false
+	newVersion := models.VersionProject{}
+
+	err = db.Where("id = ?", version.ID).First(&newVersion).Error
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+	newVersion.Current = true
+
+	err = db.Where("id = ?", oldVersion.ID).Save(&oldVersion).Error
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		db.Rollback()
+		return
+	}
+
+	err = db.Where("id = ?", newVersion.ID).Save(&newVersion).Error
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		db.Rollback()
 		return
 	}
 

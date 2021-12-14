@@ -84,6 +84,7 @@ type VersionProject struct {
 	gorm.Model
 	IdProject uint   `json:"id_project"`
 	Version   string `json:"version"`
+	Current   bool   `json:"current"`
 }
 
 func DBMigrate(db *gorm.DB) {
