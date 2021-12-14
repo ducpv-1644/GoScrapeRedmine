@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"go-scrape-redmine/config"
+	"go-scrape-redmine/models"
+	"gorm.io/gorm"
 	"net/http"
 	"os"
 	"strconv"
@@ -12,11 +14,18 @@ import (
 	"time"
 )
 
-func NotiChatWork(version string) {
+func NotiChatWork() {
 
 	receivers := []string{os.Getenv("MEMBER_ONE_NOTI_CHAT_WORK"), os.Getenv("MEMBER_TWO_NOTI_CHAT_WORK")}
 	config.LoadENV()
 	db := config.DBConnect()
+
+	version, err := GetCurrentVersion(db)
+	if err != nil {
+		fmt.Println("error during noti slack: ", err)
+		return
+	}
+
 	listReport, targetVersion := NewNotify(db).GetReportMember("pherusa", version)
 	fmt.Println("message", strings.Join(listReport, "\n"))
 	t1 := time.Now()
@@ -30,7 +39,7 @@ func NotiChatWork(version string) {
 	}
 	body, _ := json.Marshal(bot)
 
-	_, err := http.Post(os.Getenv("URL_NOTI"), "application/json", bytes.NewBuffer(body))
+	_, err = http.Post(os.Getenv("URL_NOTI"), "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		//Failed to read response.
 
@@ -38,11 +47,16 @@ func NotiChatWork(version string) {
 	}
 	return
 }
-func NotiSlack(version string) {
+func NotiSlack() {
 
 	receivers := []string{os.Getenv("MEMBER_ONE_NOTI_SLACK"), os.Getenv("MEMBER_TWO_NOTI_SLACK")}
 	config.LoadENV()
 	db := config.DBConnect()
+	version, err := GetCurrentVersion(db)
+	if err != nil {
+		fmt.Println("error during noti slack: ", err)
+		return
+	}
 	listReport, targetVersion := NewNotify(db).GetReportMember("pherusa", version)
 	fmt.Println("message", strings.Join(listReport, "\n"))
 	t1 := time.Now()
@@ -57,13 +71,23 @@ func NotiSlack(version string) {
 	}
 	body, _ := json.Marshal(bot)
 
-	_, err := http.Post(os.Getenv("URL_NOTI"), "application/json", bytes.NewBuffer(body))
+	_, err = http.Post(os.Getenv("URL_NOTI"), "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		//Failed to read response.
 
 		panic(err)
 	}
 	return
+}
+
+func GetCurrentVersion(db *gorm.DB) (string, error) {
+	version := models.VersionProject{}
+	err := db.Where("current = true").First(&version).Error
+	if err != nil {
+		return "", err
+	}
+
+	return version.Version, nil
 }
 
 func convertDateToString(time *time.Time) string {

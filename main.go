@@ -43,8 +43,8 @@ func main() {
 		pherusa.NewPherusa(db).CrawlIssuePherusa(3, "854")
 		return
 	} else if seed == "noti" {
-		Notify.NotiChatWork("854")
-		Notify.NotiSlack("854")
+		Notify.NotiChatWork()
+		Notify.NotiSlack()
 		return
 	} else if seed != "none" {
 		fmt.Println("Flag seed invalid")

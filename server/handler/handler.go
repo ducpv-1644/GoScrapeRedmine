@@ -883,46 +883,52 @@ func (a *UserHandler) SetCurrentVersion(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var oldVersion *models.VersionProject
+	notFound := false
+	var oldVersion models.VersionProject
 	err = db.Where("current = true").First(&oldVersion).Error
 
-	if err != nil && err != gorm.ErrRecordNotFound {
+	if err == gorm.ErrRecordNotFound {
+		notFound = true
+		err = nil
+	}
+
+	if err != nil {
 		resp := response{}
 		resp.Code = http.StatusBadRequest
 		resp.Message = err.Error()
 		RespondWithJSON(w, http.StatusBadRequest, resp)
 		return
 	}
-	oldVersion.Current = false
+
+	if notFound != true {
+		oldVersion.Current = false
+
+		err = db.Where("id = ?", oldVersion.ID).Save(&oldVersion).Error
+		if err != nil {
+			resp := response{}
+			resp.Code = http.StatusBadRequest
+			resp.Message = err.Error()
+			RespondWithJSON(w, http.StatusBadRequest, resp)
+			return
+		}
+	}
+
 	newVersion := models.VersionProject{}
-
 	err = db.Where("id = ?", version.ID).First(&newVersion).Error
-	if err != nil {
-		resp := response{}
-		resp.Code = http.StatusBadRequest
-		resp.Message = err.Error()
-		RespondWithJSON(w, http.StatusBadRequest, resp)
-		return
-	}
 	newVersion.Current = true
-
-	err = db.Where("id = ?", oldVersion.ID).Save(&oldVersion).Error
 	if err != nil {
 		resp := response{}
 		resp.Code = http.StatusBadRequest
 		resp.Message = err.Error()
 		RespondWithJSON(w, http.StatusBadRequest, resp)
-		db.Rollback()
 		return
 	}
-
 	err = db.Where("id = ?", newVersion.ID).Save(&newVersion).Error
 	if err != nil {
 		resp := response{}
 		resp.Code = http.StatusBadRequest
 		resp.Message = err.Error()
 		RespondWithJSON(w, http.StatusBadRequest, resp)
-		db.Rollback()
 		return
 	}
 
