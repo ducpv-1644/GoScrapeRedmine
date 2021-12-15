@@ -78,11 +78,12 @@ type Issue struct {
 	IssueSource          string `json:"issue_source"`
 	IssueVersion         string `json:"issue_version"`
 	IssueTarget          string `json:"issue_target"`
+	IssueState           string `json:"issue_state"`
 }
 
 type VersionProject struct {
 	gorm.Model
-	IdProject uint   `json:"id_project"`
+	ProjectId uint   `json:"project_id"`
 	Version   string `json:"version"`
 	Current   bool   `json:"current"`
 }
@@ -90,8 +91,9 @@ type VersionProject struct {
 type ConfigNoty struct {
 	gorm.Model
 	Service   string `json:"service"`
-	ChannelId string `json:"box_id"`
+	ChannelId string `json:"channel_id"`
 	MemberId  string `json:"member_id"`
+	ProjectId string `json:"project_id"`
 }
 
 func DBMigrate(db *gorm.DB) {
@@ -101,4 +103,5 @@ func DBMigrate(db *gorm.DB) {
 	db.AutoMigrate(&Activity{})
 	db.AutoMigrate(&Issue{})
 	db.AutoMigrate(&VersionProject{})
+	db.AutoMigrate(&ConfigNoty{})
 }

@@ -45,11 +45,11 @@ func (a *Pherusa) CrawlIssuePherusa(projectId uint, version string) error {
 
 func (a *Pherusa) CreateVersion(version string, projectId uint) error {
 	versionProject := models.VersionProject{}
-	err := a.db.Where("id_project = ? and version = ?", projectId, version).First(&versionProject).Error
+	err := a.db.Where("project_id = ? and version = ?", projectId, version).First(&versionProject).Error
 
 	if err == gorm.ErrRecordNotFound {
 		a.db.Create(&models.VersionProject{
-			IdProject: projectId,
+			ProjectId: projectId,
 			Version:   version,
 			Current:   false,
 		})
@@ -128,12 +128,16 @@ func CrawlIssue(c *colly.Collector, db *gorm.DB, project string, version string)
 				IssueDoneRatio:     tr.DOM.Children().Filter(".done_ratio").Text(),
 				IssueSource:        "pherusa",
 				IssueVersion:       version,
+				IssueState:         "",
 			}
+			overDueId := tr.DOM.Filter(".overdue").Children().Filter(".id").Text()
+			if overDueId != "" {
+				issue.IssueState = "overdue"
+			}
+
 			var dbIssue models.Issue
 
 			db.Find(&dbIssue, issue)
-
-			issue.IssueSource = "pherusa"
 
 			if dbIssue == (models.Issue{}) {
 				db.Create(&issue)
@@ -150,11 +154,8 @@ func CrawlIssue(c *colly.Collector, db *gorm.DB, project string, version string)
 		RandomDelay: 1 * time.Second,
 	})
 
-	for i := 1; i <= 5; i++ {
-		fullURL := fmt.Sprintf(os.Getenv("HOMEPAGE") + "/projects/" + project + "/issues" + getUrlFromVersion(version))
-		c.Visit(fullURL)
-		fmt.Println(fullURL)
-	}
+	fullURL := fmt.Sprintf(os.Getenv("HOMEPAGE") + "/projects/" + project + "/issues" + getUrlFromVersion(version))
+	c.Visit(fullURL)
 
 	fmt.Println("Crwal issue data finished.")
 }

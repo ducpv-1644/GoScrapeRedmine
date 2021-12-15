@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"go-scrape-redmine/Notify"
 	"go-scrape-redmine/app/users"
 	userRepository "go-scrape-redmine/app/users/repository"
 	userUsecase "go-scrape-redmine/app/users/usecase"
@@ -646,6 +647,7 @@ type GetIssueByMember struct {
 	SumEstimatedTimeProject string  `json:"sum_est_project_time"`
 	IssueResult             []getAllIssueResult
 }
+
 type getAllIssueResult struct {
 	IssueId            string `json:"issue_id"`
 	IssueProject       string `json:"issue_project"`
@@ -885,7 +887,7 @@ func (a *UserHandler) SetCurrentVersion(w http.ResponseWriter, r *http.Request) 
 
 	notFound := false
 	var oldVersion models.VersionProject
-	err = db.Where("current = true").First(&oldVersion).Error
+	err = db.Where("current = true AND project_id = ?", version.ProjectId).First(&oldVersion).Error
 
 	if err == gorm.ErrRecordNotFound {
 		notFound = true
@@ -914,7 +916,7 @@ func (a *UserHandler) SetCurrentVersion(w http.ResponseWriter, r *http.Request) 
 	}
 
 	newVersion := models.VersionProject{}
-	err = db.Where("id = ?", version.ID).First(&newVersion).Error
+	err = db.Where("id = ? AND project_id = ?", version.ID, version.ProjectId).First(&newVersion).Error
 	newVersion.Current = true
 	if err != nil {
 		resp := response{}
@@ -923,7 +925,7 @@ func (a *UserHandler) SetCurrentVersion(w http.ResponseWriter, r *http.Request) 
 		RespondWithJSON(w, http.StatusBadRequest, resp)
 		return
 	}
-	err = db.Where("id = ?", newVersion.ID).Save(&newVersion).Error
+	err = db.Where("id = ? AND project_id = ?", newVersion.ID, version.ProjectId).Save(&newVersion).Error
 	if err != nil {
 		resp := response{}
 		resp.Code = http.StatusBadRequest
@@ -933,6 +935,147 @@ func (a *UserHandler) SetCurrentVersion(w http.ResponseWriter, r *http.Request) 
 	}
 
 	resp := response{}
+	resp.Code = http.StatusOK
+	RespondWithJSON(w, http.StatusOK, resp)
+}
+
+func (a *UserHandler) CreateConfig(w http.ResponseWriter, r *http.Request) {
+	db := config.DBConnect()
+
+	configNoti := models.ConfigNoty{}
+	err := json.NewDecoder(r.Body).Decode(&configNoti)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = err.Error()
+
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	createConfig, err := Notify.NewNotify(db).CreateConfig(configNoti)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadGateway
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadGateway, resp)
+		return
+	}
+
+	resp := response{
+		Result: createConfig,
+	}
+	resp.Code = http.StatusOK
+	RespondWithJSON(w, http.StatusOK, resp)
+}
+
+func (a *UserHandler) UpdateConfig(w http.ResponseWriter, r *http.Request) {
+	db := config.DBConnect()
+	updateConfig := models.ConfigNoty{}
+	err := json.NewDecoder(r.Body).Decode(&updateConfig)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	createConfig, err := Notify.NewNotify(db).UpdateConfig(updateConfig)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadGateway
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadGateway, resp)
+		return
+	}
+
+	resp := response{
+		Result: createConfig,
+	}
+	resp.Code = http.StatusOK
+	RespondWithJSON(w, http.StatusOK, resp)
+}
+
+func (a *UserHandler) GetAllConfig(w http.ResponseWriter, r *http.Request) {
+	db := config.DBConnect()
+	id := r.URL.Query().Get("project_id")
+
+	if id == "" {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = "project_id is invalid"
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	configArr, err := Notify.NewNotify(db).GetAllConfig(id)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadGateway
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadGateway, resp)
+		return
+	}
+
+	resp := response{
+		Result: configArr,
+	}
+	resp.Code = http.StatusOK
+	RespondWithJSON(w, http.StatusOK, resp)
+}
+
+func (a *UserHandler) GetConfigById(w http.ResponseWriter, r *http.Request) {
+	db := config.DBConnect()
+	id := r.URL.Query().Get("id")
+
+	if id == "" {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = "id is invalid"
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	config, err := Notify.NewNotify(db).GetConfigById(id)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadGateway
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadGateway, resp)
+		return
+	}
+
+	resp := response{
+		Result: config,
+	}
+	resp.Code = http.StatusOK
+	RespondWithJSON(w, http.StatusOK, resp)
+}
+
+func (a *UserHandler) DeleteConfig(w http.ResponseWriter, r *http.Request) {
+	db := config.DBConnect()
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = "id is invalid"
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	err := Notify.NewNotify(db).DeleteConfig(id)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadGateway
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadGateway, resp)
+		return
+	}
+
+	resp := response{
+		Result: "",
+	}
 	resp.Code = http.StatusOK
 	RespondWithJSON(w, http.StatusOK, resp)
 }

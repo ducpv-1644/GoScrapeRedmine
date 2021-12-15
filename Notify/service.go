@@ -27,6 +27,67 @@ type notify struct {
 	db *gorm.DB
 }
 
+func (n notify) CreateConfig(config models.ConfigNoty) (models.ConfigNoty, error) {
+	//TODO implement me
+	err := n.db.Create(&config).Error
+	if err != nil {
+		return models.ConfigNoty{}, err
+	}
+	return config, nil
+}
+
+func (n notify) UpdateConfig(config models.ConfigNoty) (models.ConfigNoty, error) {
+	//TODO implement me
+	old := models.ConfigNoty{}
+	err := n.db.Where("id = ?", config.ID).First(&old).Error
+	if err != nil {
+		return models.ConfigNoty{}, err
+	}
+	err = n.db.Save(config).Error
+	if err != nil {
+		return models.ConfigNoty{}, err
+	}
+
+	return config, nil
+}
+
+func (n notify) GetAllConfig(projectId string) ([]models.ConfigNoty, error) {
+	//TODO implement me
+	results := make([]models.ConfigNoty, 0)
+	err := n.db.Where("project_id = ?", projectId).Find(&results).Error
+	if err != nil {
+		return []models.ConfigNoty{}, err
+	}
+
+	return results, nil
+}
+
+func (n notify) GetConfigById(id string) (models.ConfigNoty, error) {
+	//TODO implement me
+	result := models.ConfigNoty{}
+	err := n.db.Where("id = ?", id).First(&result).Error
+	if err != nil {
+		return models.ConfigNoty{}, err
+	}
+
+	return result, nil
+}
+
+func (n notify) DeleteConfig(id string) error {
+	//TODO implement me
+	config := models.ConfigNoty{}
+	err := n.db.Where("id = ?", id).First(&config).Error
+	if err != nil {
+		return err
+	}
+	err = n.db.Delete(&config).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (n notify) GetReportMember(source string, version string) ([]string, string) {
 	//TODO implement me
 	listIssue := make([]models.Issue, 0)
@@ -110,12 +171,8 @@ func (n notify) GetReportMember(source string, version string) ([]string, string
 				}
 
 				if issue.IssueDueDate != "" {
-					dueDate, err := convertStringToTime(issue.IssueDueDate)
-					if err != nil {
-						fmt.Println("error during convert string to time: ", err)
 
-					}
-					if dueDate.Before(time.Now()) && !checkFree(issue.IssueStatus) {
+					if issue.IssueState == "overdue" {
 						overDueArr = append(overDueArr, issue.IssueId)
 					}
 				}
@@ -145,16 +202,16 @@ func (n notify) GetReportMember(source string, version string) ([]string, string
 		sArray = append(sArray, str)
 
 	}
-
-	for _, s := range sArray {
-		fmt.Println(s)
-	}
-
 	return sArray, targetVersion
 }
 
 type Notify interface {
 	GetReportMember(source string, version string) ([]string, string)
+	CreateConfig(config models.ConfigNoty) (models.ConfigNoty, error)
+	UpdateConfig(config models.ConfigNoty) (models.ConfigNoty, error)
+	GetAllConfig(projectId string) ([]models.ConfigNoty, error)
+	GetConfigById(id string) (models.ConfigNoty, error)
+	DeleteConfig(id string) error
 }
 
 func convertStringToTime(date string) (time.Time, error) {
@@ -182,16 +239,6 @@ func checkFree(status string) bool {
 	} else {
 		return false
 	}
-}
-
-func formatData(memberName, message string) string {
-	str := "-" + memberName + ":" + message
-	str = strings.ReplaceAll(str, "\"", "")
-	str = strings.ReplaceAll(str, "{", " ")
-	str = strings.ReplaceAll(str, "}", " ")
-	str = strings.ReplaceAll(str, ",", " | ")
-	str = strings.ReplaceAll(str, "\\u0026", "&")
-	return str
 }
 
 func NewNotify(db *gorm.DB) Notify {
