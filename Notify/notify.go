@@ -27,7 +27,7 @@ func NotiChatWork() {
 	}
 
 	listReport, targetVersion := NewNotify(db).GetReportMember("pherusa", version)
-	fmt.Println("message", strings.Join(listReport, "\n"))
+	//fmt.Println("message", strings.Join(listReport, "\n"))
 	t1 := time.Now()
 	timeStr := convertDateToString(&t1)
 
@@ -58,7 +58,7 @@ func NotiSlack() {
 		return
 	}
 	listReport, targetVersion := NewNotify(db).GetReportMember("pherusa", version)
-	fmt.Println("message", strings.Join(listReport, "\n"))
+	//fmt.Println("message", strings.Join(listReport, "\n"))
 	t1 := time.Now()
 	timeStr := convertDateToString(&t1)
 
@@ -66,11 +66,9 @@ func NotiSlack() {
 		Service:   os.Getenv("SERVICE_SLACK_SLACK"),
 		Channel:   os.Getenv("CHANNEL_SLACK"),
 		Receivers: receivers,
-		//Message:   "Daily report: " + strings.Join(listReport, "\n") + "",
-		Message: targetVersion + "-" + timeStr + ":" + strings.Join(listReport, "\n") + "[/info]",
+		Message:   "*" + targetVersion + "-" + timeStr + ":" + "*" + "\n" + strings.Join(listReport, "\n"),
 	}
 	body, _ := json.Marshal(bot)
-
 	_, err = http.Post(os.Getenv("URL_NOTI"), "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		//Failed to read response.

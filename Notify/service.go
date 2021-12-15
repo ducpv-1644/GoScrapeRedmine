@@ -38,6 +38,7 @@ func (n notify) GetReportMember(source string, version string) ([]string, string
 		fmt.Println("error during get issue: ", err)
 		return sArray, ""
 	}
+
 	listMemberMap := make(map[string]string, 0)
 	listMember := make([]string, 0)
 
