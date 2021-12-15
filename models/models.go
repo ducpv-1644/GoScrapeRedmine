@@ -87,6 +87,13 @@ type VersionProject struct {
 	Current   bool   `json:"current"`
 }
 
+type ConfigNoty struct {
+	gorm.Model
+	Service   string `json:"service"`
+	ChannelId string `json:"box_id"`
+	MemberId  string `json:"member_id"`
+}
+
 func DBMigrate(db *gorm.DB) {
 	db.AutoMigrate(&User{})
 	db.AutoMigrate(&Project{})

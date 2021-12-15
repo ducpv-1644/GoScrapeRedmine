@@ -1,7 +1,6 @@
 package Notify
 
 import (
-	"encoding/json"
 	"fmt"
 	"go-scrape-redmine/models"
 	"gorm.io/gorm"
@@ -32,6 +31,8 @@ func (n notify) GetReportMember(source string, version string) ([]string, string
 	//TODO implement me
 	listIssue := make([]models.Issue, 0)
 	sArray := make([]string, 0)
+	fmt.Println("version: ", version)
+
 	err := n.db.Where("issue_source = ? AND issue_version = ?  AND issue_tracker != 'EPIC' and issue_tracker != 'story'", source, version).Find(&listIssue).Error
 	if err != nil {
 		fmt.Println("error during get issue: ", err)
@@ -40,7 +41,7 @@ func (n notify) GetReportMember(source string, version string) ([]string, string
 	listMemberMap := make(map[string]string, 0)
 	listMember := make([]string, 0)
 
-	status := []string{NoEstimate, NoSpentTime, NoDueDate, OverDue, Doing, Free}
+	//status := []string{NoEstimate, NoSpentTime, NoDueDate, OverDue, Doing, Free}
 	targetVersion := ""
 
 	for _, issue := range listIssue {
@@ -56,29 +57,24 @@ func (n notify) GetReportMember(source string, version string) ([]string, string
 	}
 
 	for _, member := range listMember {
-		result := Message{
-			MemberName: member,
-			Report:     nil,
-		}
 
-		reports := make(map[string]int, 0)
-		for i := 0; i < len(status); i++ {
-			reports[status[i]] = 0
-		}
-
-		overDue := make([]string, 0)
-
+		var str string
+		overDueArr := make([]string, 0)
+		noEstimateArr := make([]string, 0)
+		noSpentTImeArr := make([]string, 0)
+		noDueTimeArr := make([]string, 0)
+		freeArr := make([]string, 0)
+		noFreeArr := make([]string, 0)
 		for _, issue := range listIssue {
-			if issue.IssueAssignee == result.MemberName {
-
+			if issue.IssueAssignee == member {
+				str = member + ": "
 				if issue.IssueStartDate != "" && issue.IssueEstimatedTime == "" {
 					startDate, err := convertStringToTime(issue.IssueStartDate)
 					if err != nil {
 						fmt.Println("error during convert string to time: ", err)
-
 					}
 					if startDate.After(time.Now()) {
-						reports[NoEstimate]++
+						noEstimateArr = append(noEstimateArr, issue.IssueId)
 					}
 				}
 
@@ -89,7 +85,7 @@ func (n notify) GetReportMember(source string, version string) ([]string, string
 
 					}
 					if dueDate.After(time.Now()) {
-						reports[NoSpentTime]++
+						noSpentTImeArr = append(noSpentTImeArr, issue.IssueId)
 					}
 				}
 
@@ -100,16 +96,16 @@ func (n notify) GetReportMember(source string, version string) ([]string, string
 
 					}
 					if startDate.After(time.Now()) {
-						reports[NoDueDate]++
+						noDueTimeArr = append(noDueTimeArr, issue.IssueId)
 					}
 				}
 
 				if checkFree(issue.IssueStatus) {
-					reports[Free]++
+					freeArr = append(freeArr, issue.IssueId)
 				}
 
 				if !checkFree(issue.IssueStatus) {
-					reports[Doing]++
+					noFreeArr = append(noFreeArr, issue.IssueId)
 				}
 
 				if issue.IssueDueDate != "" {
@@ -119,33 +115,38 @@ func (n notify) GetReportMember(source string, version string) ([]string, string
 
 					}
 					if dueDate.Before(time.Now()) && !checkFree(issue.IssueStatus) {
-						overDue = append(overDue, issue.IssueId)
-						reports[OverDue]++
+						overDueArr = append(overDueArr, issue.IssueId)
 					}
 				}
 
 			}
 
 		}
-		messageReport := make(map[string]int, 0)
-		for i := 0; i < len(status); i++ {
-			if reports[status[i]] > 0 {
-				messageReport[status[i]]++
-			}
+		if len(noEstimateArr) > 0 {
+			str = str + NoEstimate + ":" + strconv.Itoa(len(noEstimateArr)) + "| "
 		}
-		message, err := json.Marshal(messageReport)
-		if err != nil {
-			fmt.Println("error during marshal")
+		if len(noSpentTImeArr) > 0 {
+			str = str + NoSpentTime + ":" + strconv.Itoa(len(noSpentTImeArr)) + "| "
+		}
+		if len(noDueTimeArr) > 0 {
+			str = str + NoDueDate + ":" + strconv.Itoa(len(noDueTimeArr)) + "| "
+		}
+		if len(noFreeArr) > 0 {
+			str = str + Doing + ":" + strconv.Itoa(len(noFreeArr)) + "| "
+		}
+		if len(freeArr) > 0 {
+			str = str + Free + ":" + strconv.Itoa(len(freeArr)) + "| "
 		}
 
-		strMessage := string(message)
-
-		str := formatData(result.MemberName, strMessage)
-
-		if len(overDue) > 0 {
-			str = str + "(" + strings.Join(overDue, ",") + ")"
+		if len(overDueArr) > 0 {
+			str = str + OverDue + ":" + strconv.Itoa(len(overDueArr)) + " (" + strings.Join(overDueArr, ",") + ")" + " "
 		}
 		sArray = append(sArray, str)
+
+	}
+
+	for _, s := range sArray {
+		fmt.Println(s)
 	}
 
 	return sArray, targetVersion
