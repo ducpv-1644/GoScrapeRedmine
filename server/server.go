@@ -90,9 +90,9 @@ func Run(wg *sync.WaitGroup) {
 	// router.Handle("/members", isAuthorized(user_handler.GetAllMember)).Methods("GET")
 	router.HandleFunc("/members", user_handler.GetAllMember).Methods("GET")
 	router.Handle("/member/{id}", isAuthorized(user_handler.GetAllIssue)).Methods("GET")
-	router.HandleFunc("/project_versions", user_handler.GetAllVersionProject).Methods("GET")
-	router.HandleFunc("/crawl_issues", user_handler.CrawlIssueByVersion).Methods("GET")
-	router.HandleFunc("/version_project", user_handler.SetCurrentVersion).Methods("POST")
+	router.Handle("/project_versions", isAuthorized(user_handler.GetAllVersionProject)).Methods("GET")
+	router.Handle("/crawl_issues", isAuthorized(user_handler.CrawlIssueByVersion)).Methods("GET")
+	router.Handle("/version_project", isAuthorized(user_handler.SetCurrentVersion)).Methods("POST")
 	fmt.Println("Server started port 8000!")
 	http.ListenAndServe(":8000", handlers.CORS(originsOk, headersOk, methodsOk)(router))
 }

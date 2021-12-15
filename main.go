@@ -57,8 +57,8 @@ func main() {
 	cr := cron.New()
 	cr.AddFunc("0 18 * * *", Redmine.NewRedmine().CrawlRedmine)
 	cr.AddFunc("0 18 * * *", Pherusa.NewPherusa(db).CrawlPherusa)
-	//cr.AddFunc("0 18 * * *", Notify.NotiChatWork("854"))
-	//cr.AddFunc("0 18 * * *", Notify.NotiSlack("854"))
+	cr.AddFunc("0 18 * * *", Notify.NotiChatWork)
+	cr.AddFunc("0 18 * * *", Notify.NotiSlack)
 	cr.Start()
 
 	go server.Run(&wg)
