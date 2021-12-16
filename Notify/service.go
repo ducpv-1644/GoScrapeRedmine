@@ -88,10 +88,11 @@ func (n notify) DeleteConfig(id string) error {
 	return nil
 }
 
-func (n notify) GetReportMember(source string, version string) ([]string, string) {
+func (n notify) GetReportMember(source string, version string) ([]models.Block, string) {
 	//TODO implement me
 	listIssue := make([]models.Issue, 0)
 	sArray := make([]string, 0)
+	blocks := make([]models.Block, 0)
 	fmt.Println("version: ", version)
 
 	err := n.db.Where("issue_source = ? AND issue_version = ?  AND issue_tracker != 'EPIC' and issue_tracker != 'story'", source, version).Find(&listIssue).Error
@@ -120,7 +121,7 @@ func (n notify) GetReportMember(source string, version string) ([]string, string
 
 	for _, member := range listMember {
 
-		var str string
+		str := make([]string, 0)
 		overDueArr := make([]string, 0)
 		noEstimateArr := make([]string, 0)
 		noSpentTImeArr := make([]string, 0)
@@ -129,7 +130,6 @@ func (n notify) GetReportMember(source string, version string) ([]string, string
 		noFreeArr := make([]string, 0)
 		for _, issue := range listIssue {
 			if issue.IssueAssignee == member {
-				str = member + ": "
 				if issue.IssueStartDate != "" && issue.IssueEstimatedTime == "" {
 					startDate, err := convertStringToTime(issue.IssueStartDate)
 					if err != nil {
@@ -181,28 +181,56 @@ func (n notify) GetReportMember(source string, version string) ([]string, string
 
 		}
 		if len(noEstimateArr) > 0 {
-			str = str + NoEstimate + ":" + strconv.Itoa(len(noEstimateArr)) + "| "
+			noEstimate := make([]string, 0)
+			for i := 0; i < len(overDueArr); i++ {
+				noEstimate = append(noEstimate, GetLinkIssue(overDueArr[i]))
+			}
+			noEstimatestr := "(" + strings.Join(noEstimate, ",") + ")"
+			str = append(str, "*"+NoEstimate+":"+strconv.Itoa(len(noEstimateArr))+noEstimatestr+"*")
 		}
 		if len(noSpentTImeArr) > 0 {
-			str = str + NoSpentTime + ":" + strconv.Itoa(len(noSpentTImeArr)) + "| "
+			noSpentTIme := make([]string, 0)
+			for i := 0; i < len(overDueArr); i++ {
+				noSpentTIme = append(noSpentTIme, GetLinkIssue(overDueArr[i]))
+			}
+			noSpentTImestr := "(" + strings.Join(noSpentTIme, ",") + ")"
+			str = append(str, "*"+NoSpentTime+":"+strconv.Itoa(len(noSpentTImeArr))+noSpentTImestr+"*")
 		}
 		if len(noDueTimeArr) > 0 {
-			str = str + NoDueDate + ":" + strconv.Itoa(len(noDueTimeArr)) + "| "
+			noDue := make([]string, 0)
+			for i := 0; i < len(overDueArr); i++ {
+				noDue = append(noDue, GetLinkIssue(overDueArr[i]))
+			}
+			noDuestr := "(" + strings.Join(noDue, ",") + ")"
+			str = append(str, "*"+NoDueDate+":"+strconv.Itoa(len(noDueTimeArr))+noDuestr+"*")
 		}
 		if len(noFreeArr) > 0 {
-			str = str + Doing + ":" + strconv.Itoa(len(noFreeArr)) + "| "
+			str = append(str, Doing+":"+strconv.Itoa(len(noFreeArr)))
 		}
 		if len(freeArr) > 0 {
-			str = str + Free + ":" + strconv.Itoa(len(freeArr)) + "| "
+			str = append(str, Free+":"+strconv.Itoa(len(freeArr)))
 		}
 
 		if len(overDueArr) > 0 {
-			str = str + OverDue + ":" + strconv.Itoa(len(overDueArr)) + " (" + strings.Join(overDueArr, ",") + ")" + " "
+			dueDate := make([]string, 0)
+			for i := 0; i < len(overDueArr); i++ {
+				dueDate = append(dueDate, GetLinkIssue(overDueArr[i]))
+			}
+			dueDatestr := "(" + strings.Join(dueDate, ",") + ")"
+			str = append(str, "*"+OverDue+":"+strconv.Itoa(len(overDueArr))+dueDatestr+"*")
 		}
-		sArray = append(sArray, str)
+
+		blocks = append(blocks, models.Block{
+			Type: "section",
+			Text: models.MessageBlock{
+				Type: "mrkdwn",
+				Text: "- " + member + ": " + strings.Join(str, " | "),
+			},
+		})
 
 	}
-	return sArray, targetVersion
+
+	return blocks, targetVersion
 }
 
 type Notify interface {
@@ -243,4 +271,12 @@ func checkFree(status string) bool {
 
 func NewNotify(db *gorm.DB) Notify {
 	return notify{db: db}
+}
+
+func GetLinkIssue(id string) string {
+	if id == "" {
+		return ""
+	}
+
+	return "<https://pherusa-redmine.sun-asterisk.vn/issues/" + id + "|" + id + ">"
 }

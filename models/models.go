@@ -105,3 +105,13 @@ func DBMigrate(db *gorm.DB) {
 	db.AutoMigrate(&VersionProject{})
 	db.AutoMigrate(&ConfigNoty{})
 }
+
+type MessageBlock struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
+
+type Block struct {
+	Type string       `json:"type"`
+	Text MessageBlock `json:"text"`
+}
