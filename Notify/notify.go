@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -26,7 +25,7 @@ func NotiChatWork() {
 		return
 	}
 
-	listReport, targetVersion := NewNotify(db).GetReportMember("pherusa", version)
+	_, targetVersion := NewNotify(db).GetReportMember("pherusa", version)
 	//fmt.Println("message", strings.Join(listReport, "\n"))
 	t1 := time.Now()
 	timeStr := convertDateToString(&t1)
@@ -35,7 +34,7 @@ func NotiChatWork() {
 		Service:   os.Getenv("SERVICE_CHAT_WORK"),
 		Channel:   os.Getenv("CHANNEL_CHAT_WORK"),
 		Receivers: receivers,
-		Message:   "[info][title]" + targetVersion + "-" + timeStr + ": [/title]" + strings.Join(listReport, "\n") + "[/info]",
+		Message:   "[info][title]" + targetVersion + "-" + timeStr + ": [/title]" + "[/info]",
 	}
 	body, _ := json.Marshal(bot)
 
@@ -61,13 +60,19 @@ func NotiSlack() {
 	//fmt.Println("message", strings.Join(listReport, "\n"))
 	t1 := time.Now()
 	timeStr := convertDateToString(&t1)
-
+	var attachments = make([]Attachments, 0)
+	attachments = append(attachments, Attachments{
+		Color:  "#f2c744",
+		Blocks: listReport,
+	})
 	bot := BotChatWork{
-		Service:   os.Getenv("SERVICE_SLACK_SLACK"),
-		Channel:   os.Getenv("CHANNEL_SLACK"),
-		Receivers: receivers,
-		Message:   "*" + targetVersion + "-" + timeStr + ":" + "*" + "\n" + strings.Join(listReport, "\n"),
+		Service:     os.Getenv("SERVICE_SLACK_SLACK"),
+		Channel:     os.Getenv("CHANNEL_SLACK"),
+		Receivers:   receivers,
+		Message:     "*" + targetVersion + "-" + timeStr + ":" + "*" + "\n",
+		Attachments: attachments,
 	}
+	fmt.Println("bot", bot.Attachments)
 	body, _ := json.Marshal(bot)
 	_, err = http.Post(os.Getenv("URL_NOTI"), "application/json", bytes.NewBuffer(body))
 	if err != nil {

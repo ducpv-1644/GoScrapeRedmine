@@ -88,10 +88,10 @@ func (n notify) DeleteConfig(id string) error {
 	return nil
 }
 
-func (n notify) GetReportMember(source string, version string) ([]models.Block, string) {
+func (n notify) GetReportMember(source string, version string) ([]Block, string) {
 	//TODO implement me
 	listIssue := make([]models.Issue, 0)
-	blocks := make([]models.Block, 0)
+	blocks := make([]Block, 0)
 	fmt.Println("version: ", version)
 
 	err := n.db.Where("issue_source = ? AND issue_version = ?  AND issue_tracker != 'EPIC' and issue_tracker != 'story'", source, version).Find(&listIssue).Error
@@ -219,9 +219,9 @@ func (n notify) GetReportMember(source string, version string) ([]models.Block, 
 			str = append(str, "*"+OverDue+":"+strconv.Itoa(len(overDueArr))+dueDatestr+"*")
 		}
 
-		blocks = append(blocks, models.Block{
+		blocks = append(blocks, Block{
 			Type: "section",
-			Text: models.MessageBlock{
+			Text: MessageBlock{
 				Type: "mrkdwn",
 				Text: "- " + member + ": " + strings.Join(str, " | "),
 			},
@@ -233,7 +233,7 @@ func (n notify) GetReportMember(source string, version string) ([]models.Block, 
 }
 
 type Notify interface {
-	GetReportMember(source string, version string) ([]models.Block, string)
+	GetReportMember(source string, version string) ([]Block, string)
 	CreateConfig(config models.ConfigNoty) (models.ConfigNoty, error)
 	UpdateConfig(config models.ConfigNoty) (models.ConfigNoty, error)
 	GetAllConfig(projectId string) ([]models.ConfigNoty, error)
