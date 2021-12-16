@@ -91,14 +91,13 @@ func (n notify) DeleteConfig(id string) error {
 func (n notify) GetReportMember(source string, version string) ([]models.Block, string) {
 	//TODO implement me
 	listIssue := make([]models.Issue, 0)
-	sArray := make([]string, 0)
 	blocks := make([]models.Block, 0)
 	fmt.Println("version: ", version)
 
 	err := n.db.Where("issue_source = ? AND issue_version = ?  AND issue_tracker != 'EPIC' and issue_tracker != 'story'", source, version).Find(&listIssue).Error
 	if err != nil {
 		fmt.Println("error during get issue: ", err)
-		return sArray, ""
+		return blocks, ""
 	}
 
 	listMemberMap := make(map[string]string, 0)
@@ -234,7 +233,7 @@ func (n notify) GetReportMember(source string, version string) ([]models.Block, 
 }
 
 type Notify interface {
-	GetReportMember(source string, version string) ([]string, string)
+	GetReportMember(source string, version string) ([]models.Block, string)
 	CreateConfig(config models.ConfigNoty) (models.ConfigNoty, error)
 	UpdateConfig(config models.ConfigNoty) (models.ConfigNoty, error)
 	GetAllConfig(projectId string) ([]models.ConfigNoty, error)
