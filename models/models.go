@@ -96,6 +96,12 @@ type ConfigNoty struct {
 	ProjectId string `json:"project_id"`
 }
 
+type DueDateVersion struct {
+	gorm.Model
+	Version string `json:"version"`
+	DueDate string `json:"due_date"`
+}
+
 func DBMigrate(db *gorm.DB) {
 	db.AutoMigrate(&User{})
 	db.AutoMigrate(&Project{})
@@ -104,6 +110,5 @@ func DBMigrate(db *gorm.DB) {
 	db.AutoMigrate(&Issue{})
 	db.AutoMigrate(&VersionProject{})
 	db.AutoMigrate(&ConfigNoty{})
+	db.AutoMigrate(&DueDateVersion{})
 }
-
-

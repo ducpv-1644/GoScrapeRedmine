@@ -94,10 +94,10 @@ func Run(wg *sync.WaitGroup) {
 	router.HandleFunc("/crawl_issues", user_handler.CrawlIssueByVersion).Methods("GET")
 	router.HandleFunc("/version_project", user_handler.SetCurrentVersion).Methods("POST")
 	router.HandleFunc("/config", user_handler.CreateConfig).Methods("POST")
-	router.HandleFunc("/config", user_handler.UpdateConfig).Methods("PUT")
+	router.HandleFunc("/config/{id}", user_handler.UpdateConfig).Methods("PUT")
 	router.HandleFunc("/config", user_handler.GetAllConfig).Methods("GET")
-	router.HandleFunc("/config_by_id", user_handler.GetConfigById).Methods("GET")
-	router.HandleFunc("/config", user_handler.DeleteConfig).Methods("DELETE")
+	router.HandleFunc("/config/{id}", user_handler.GetConfigById).Methods("GET")
+	router.HandleFunc("/config/{id}", user_handler.DeleteConfig).Methods("DELETE")
 	fmt.Println("Server started port 8000!")
 	http.ListenAndServe(":8000", handlers.CORS(originsOk, headersOk, methodsOk)(router))
 }

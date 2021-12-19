@@ -193,7 +193,7 @@ func (n notify) GetReportMember(source string, version string) ([]Block, string)
 				noSpentTIme = append(noSpentTIme, GetLinkIssue(overDueArr[i]))
 			}
 			noSpentTImestr := "(" + strings.Join(noSpentTIme, ",") + ")"
-			str = append(str, "*"+NoSpentTime+":"+strconv.Itoa(len(noSpentTImeArr))+noSpentTImestr+"*")
+			str = append(str, "*"+NoSpentTime+": "+strconv.Itoa(len(noSpentTImeArr))+noSpentTImestr+"*")
 		}
 		if len(noDueTimeArr) > 0 {
 			noDue := make([]string, 0)
@@ -201,13 +201,13 @@ func (n notify) GetReportMember(source string, version string) ([]Block, string)
 				noDue = append(noDue, GetLinkIssue(overDueArr[i]))
 			}
 			noDuestr := "(" + strings.Join(noDue, ",") + ")"
-			str = append(str, "*"+NoDueDate+":"+strconv.Itoa(len(noDueTimeArr))+noDuestr+"*")
+			str = append(str, "*"+NoDueDate+": "+strconv.Itoa(len(noDueTimeArr))+noDuestr+"*")
 		}
 		if len(noFreeArr) > 0 {
-			str = append(str, Doing+":"+strconv.Itoa(len(noFreeArr)))
+			str = append(str, Doing+": "+strconv.Itoa(len(noFreeArr)))
 		}
 		if len(freeArr) > 0 {
-			str = append(str, Free+":"+strconv.Itoa(len(freeArr)))
+			str = append(str, Free+": "+strconv.Itoa(len(freeArr)))
 		}
 
 		if len(overDueArr) > 0 {
@@ -216,7 +216,7 @@ func (n notify) GetReportMember(source string, version string) ([]Block, string)
 				dueDate = append(dueDate, GetLinkIssue(overDueArr[i]))
 			}
 			dueDatestr := "(" + strings.Join(dueDate, ",") + ")"
-			str = append(str, "*"+OverDue+":"+strconv.Itoa(len(overDueArr))+dueDatestr+"*")
+			str = append(str, "*"+OverDue+": "+strconv.Itoa(len(overDueArr))+dueDatestr+"*")
 		}
 
 		blocks = append(blocks, Block{

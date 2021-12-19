@@ -34,8 +34,9 @@ func (a *Pherusa) CrawlIssuePherusa(projectId uint, version string) error {
 		return err
 	}
 
-	projectName := strings.ReplaceAll(project.Prefix, "/projects/", "")
-	CrawlIssue(c, a.db, projectName, version)
+	//projectName := strings.ReplaceAll(project.Prefix, "/projects/", "")
+	//CrawlIssue(c, a.db, projectName, version)
+	CrawlDueDateVersion(c, a.db, "playbook-magic-moment")
 	err = a.CreateVersion(version, projectId)
 	if err != nil {
 		return err
@@ -210,6 +211,39 @@ func CrawlActivities(c *colly.Collector, db *gorm.DB) {
 
 	c.Visit(os.Getenv("HOMEPAGE") + "/activity")
 	fmt.Println("Crwal activity data finished.")
+}
+
+func CrawlDueDateVersion(c *colly.Collector, db *gorm.DB, project string) {
+
+	fmt.Println("Crawl due date ")
+
+	c.OnHTML("#tab-content-versions > table > tbody", func(e *colly.HTMLElement) {
+		fmt.Println(c)
+		fmt.Println(e)
+		e.ForEach("tr", func(_ int, tr *colly.HTMLElement) {
+			//issue := models.DueDateVersion{}
+			fmt.Println(tr.DOM.Children().Filter(".date").Text())
+			//db.Find(&dbIssue, issue)
+			//
+			//if dbIssue == (models.Issue{}) {
+			//	db.Create(&issue)
+			//}
+			//if dbIssue.IssueId == issue.IssueId {
+			//	db.Model(&dbIssue).Where("issue_id = ?", issue.IssueId).Updates(issue)
+			//}
+
+		})
+	})
+
+	c.Limit(&colly.LimitRule{
+		DomainGlob:  "*",
+		RandomDelay: 1 * time.Second,
+	})
+
+	fullURL := fmt.Sprintf(os.Getenv("HOMEPAGE") + "/projects/" + project + "/settings")
+	c.Visit(fullURL)
+
+	fmt.Println("Crwal due date data finished.")
 }
 
 func getMemberId(url string) string {

@@ -971,8 +971,16 @@ func (a *UserHandler) CreateConfig(w http.ResponseWriter, r *http.Request) {
 
 func (a *UserHandler) UpdateConfig(w http.ResponseWriter, r *http.Request) {
 	db := config.DBConnect()
-	updateConfig := models.ConfigNoty{}
-	err := json.NewDecoder(r.Body).Decode(&updateConfig)
+	idStr := mux.Vars(r)["id"]
+	if idStr == "" {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = "id is invalid"
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		resp := response{}
 		resp.Code = http.StatusBadRequest
@@ -980,6 +988,17 @@ func (a *UserHandler) UpdateConfig(w http.ResponseWriter, r *http.Request) {
 		RespondWithJSON(w, http.StatusBadRequest, resp)
 		return
 	}
+	updateConfig := models.ConfigNoty{}
+	err = json.NewDecoder(r.Body).Decode(&updateConfig)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	updateConfig.ID = uint(id)
 
 	createConfig, err := Notify.NewNotify(db).UpdateConfig(updateConfig)
 	if err != nil {
@@ -1027,9 +1046,8 @@ func (a *UserHandler) GetAllConfig(w http.ResponseWriter, r *http.Request) {
 
 func (a *UserHandler) GetConfigById(w http.ResponseWriter, r *http.Request) {
 	db := config.DBConnect()
-	id := r.URL.Query().Get("id")
-
-	if id == "" {
+	idStr := mux.Vars(r)["id"]
+	if idStr == "" {
 		resp := response{}
 		resp.Code = http.StatusBadRequest
 		resp.Message = "id is invalid"
@@ -1037,7 +1055,7 @@ func (a *UserHandler) GetConfigById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config, err := Notify.NewNotify(db).GetConfigById(id)
+	config, err := Notify.NewNotify(db).GetConfigById(idStr)
 	if err != nil {
 		resp := response{}
 		resp.Code = http.StatusBadGateway
@@ -1055,7 +1073,7 @@ func (a *UserHandler) GetConfigById(w http.ResponseWriter, r *http.Request) {
 
 func (a *UserHandler) DeleteConfig(w http.ResponseWriter, r *http.Request) {
 	db := config.DBConnect()
-	id := r.URL.Query().Get("id")
+	id := mux.Vars(r)["id"]
 	if id == "" {
 		resp := response{}
 		resp.Code = http.StatusBadRequest
