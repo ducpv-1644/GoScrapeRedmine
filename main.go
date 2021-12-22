@@ -40,7 +40,11 @@ func main() {
 		Notify.NewNotify(db).GetReportMember("pherusa", "854")
 		return
 	} else if seed == "apiIssue" {
-		pherusa.NewPherusa(db).CrawlIssuePherusa(3, "854")
+		err := pherusa.NewPherusa(db).CrawlIssuePherusa(3, "854")
+		if err != nil {
+		    fmt.Println("err",err)
+			return
+		}
 		return
 	} else if seed == "noti" {
 		Notify.NotyReports()
@@ -54,9 +58,18 @@ func main() {
 	wg.Add(num_workers)
 
 	cr := cron.New()
-	cr.AddFunc("0 18 * * *", Redmine.NewRedmine().CrawlRedmine)
-	cr.AddFunc("0 18 * * *", Pherusa.NewPherusa(db).CrawlPherusa)
-	cr.AddFunc("0 18 * * *", Notify.NotyReports)
+	_, err := cr.AddFunc("0 18 * * *", Redmine.NewRedmine().CrawlRedmine)
+	if err != nil {
+		return
+	}
+	_, err = cr.AddFunc("0 18 * * *", Pherusa.NewPherusa(db).CrawlPherusa)
+	if err != nil {
+		return
+	}
+	_, err = cr.AddFunc("0 18 * * *", Notify.NotyReports)
+	if err != nil {
+		return
+	}
 	cr.Start()
 
 	go server.Run(&wg)

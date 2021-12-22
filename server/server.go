@@ -99,5 +99,8 @@ func Run(wg *sync.WaitGroup) {
 	router.HandleFunc("/config/{id}", user_handler.GetConfigById).Methods("GET")
 	router.HandleFunc("/config/{id}", user_handler.DeleteConfig).Methods("DELETE")
 	fmt.Println("Server started port 8000!")
-	http.ListenAndServe(":8000", handlers.CORS(originsOk, headersOk, methodsOk)(router))
+	err := http.ListenAndServe(":8000", handlers.CORS(originsOk, headersOk, methodsOk)(router))
+	if err != nil {
+		return
+	}
 }

@@ -777,7 +777,7 @@ func (a *UserHandler) GetAllVersionProject(w http.ResponseWriter, r *http.Reques
 	projectId := r.URL.Query().Get("project_id")
 
 	var dbprojects []models.VersionProject
-	db.Where("id_project = ?", projectId).Find(&dbprojects)
+	db.Where("project_id = ?", projectId).Find(&dbprojects)
 
 	resp := response{}
 	resp.Code = http.StatusOK

@@ -26,7 +26,7 @@ type Token struct {
 type Project struct {
 	gorm.Model
 	Name   string  `json:"name"`
-	Prefix string  `json:"prefix`
+	Prefix string  `json:"prefix"`
 	Issue  []Issue `gorm:"many2many:project_issue;"`
 }
 

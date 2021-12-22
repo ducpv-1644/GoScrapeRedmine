@@ -93,7 +93,6 @@ func (n notify) GetReportMember(source string, version string) ([]Block, string)
 	listIssue := make([]models.Issue, 0)
 	blocks := make([]Block, 0)
 	fmt.Println("version: ", version)
-
 	err := n.db.Where("issue_source = ? AND issue_version = ?  AND issue_tracker != 'EPIC' and issue_tracker != 'story'", source, version).Find(&listIssue).Error
 	if err != nil {
 		fmt.Println("error during get issue: ", err)
@@ -145,7 +144,7 @@ func (n notify) GetReportMember(source string, version string) ([]Block, string)
 						fmt.Println("error during convert string to time: ", err)
 
 					}
-					if dueDate.After(time.Now()) {
+					if dueDate.After(time.Now())  || dueDate.Equal(time.Now()){
 						noSpentTImeArr = append(noSpentTImeArr, issue.IssueId)
 					}
 				}
@@ -156,7 +155,7 @@ func (n notify) GetReportMember(source string, version string) ([]Block, string)
 						fmt.Println("error during convert string to time: ", err)
 
 					}
-					if startDate.After(time.Now()) {
+					if startDate.After(time.Now()) || startDate.Equal(time.Now()){
 						noDueTimeArr = append(noDueTimeArr, issue.IssueId)
 					}
 				}
@@ -181,16 +180,16 @@ func (n notify) GetReportMember(source string, version string) ([]Block, string)
 		}
 		if len(noEstimateArr) > 0 {
 			noEstimate := make([]string, 0)
-			for i := 0; i < len(overDueArr); i++ {
-				noEstimate = append(noEstimate, GetLinkIssue(overDueArr[i]))
+			for i := 0; i < len(noEstimateArr); i++ {
+				noEstimate = append(noEstimate, GetLinkIssue(noEstimateArr[i]))
 			}
 			noEstimatestr := "(" + strings.Join(noEstimate, ",") + ")"
 			str = append(str, "*"+NoEstimate+":"+strconv.Itoa(len(noEstimateArr))+noEstimatestr+"*")
 		}
 		if len(noSpentTImeArr) > 0 {
 			noSpentTIme := make([]string, 0)
-			for i := 0; i < len(overDueArr); i++ {
-				noSpentTIme = append(noSpentTIme, GetLinkIssue(overDueArr[i]))
+			for i := 0; i < len(noSpentTImeArr); i++ {
+				noSpentTIme = append(noSpentTIme, GetLinkIssue(noSpentTImeArr[i]))
 			}
 			noSpentTImestr := "(" + strings.Join(noSpentTIme, ",") + ")"
 			str = append(str, "*"+NoSpentTime+": "+strconv.Itoa(len(noSpentTImeArr))+noSpentTImestr+"*")
@@ -203,13 +202,6 @@ func (n notify) GetReportMember(source string, version string) ([]Block, string)
 			noDuestr := "(" + strings.Join(noDue, ",") + ")"
 			str = append(str, "*"+NoDueDate+": "+strconv.Itoa(len(noDueTimeArr))+noDuestr+"*")
 		}
-		if len(noFreeArr) > 0 {
-			str = append(str, Doing+": "+strconv.Itoa(len(noFreeArr)))
-		}
-		if len(freeArr) > 0 {
-			str = append(str, Free+": "+strconv.Itoa(len(freeArr)))
-		}
-
 		if len(overDueArr) > 0 {
 			dueDate := make([]string, 0)
 			for i := 0; i < len(overDueArr); i++ {
@@ -218,7 +210,13 @@ func (n notify) GetReportMember(source string, version string) ([]Block, string)
 			dueDatestr := "(" + strings.Join(dueDate, ",") + ")"
 			str = append(str, "*"+OverDue+": "+strconv.Itoa(len(overDueArr))+dueDatestr+"*")
 		}
+		if len(noFreeArr) > 0 && len(freeArr) > 0 {
+			str = append(str, Doing+": "+strconv.Itoa(len(noFreeArr)))
+		}
+		if len(freeArr) > 0 && len(noFreeArr) == 0 {
 
+			str = append(str, Free)
+		}
 		blocks = append(blocks, Block{
 			Type: "section",
 			Text: MessageBlock{

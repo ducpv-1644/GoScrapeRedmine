@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"go-scrape-redmine/config"
 	"go-scrape-redmine/models"
-	"gorm.io/gorm"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 //func NotiChatWork() {
@@ -71,10 +72,10 @@ func NotiSlack(db *gorm.DB, receiversStr, projectId, service, channelId string) 
 		Attachments: attachments,
 	}
 	body, _ := json.Marshal(bot)
+	//fmt.Println("body",bytes.NewBuffer(body))
 	_, err = http.Post(os.Getenv("URL_NOTI"), "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		//Failed to read response.
-
 		panic(err)
 	}
 	return
@@ -82,11 +83,10 @@ func NotiSlack(db *gorm.DB, receiversStr, projectId, service, channelId string) 
 
 func GetCurrentVersion(db *gorm.DB, projectId string) (string, error) {
 	version := models.VersionProject{}
-	err := db.Where("current = true and project_id = ?", projectId).First(&version).Error
+	err := db.Where("current = true and project_id = ?", projectId).Find(&version).Error
 	if err != nil {
 		return "", err
 	}
-
 	return version.Version, nil
 }
 
@@ -107,6 +107,7 @@ func NotyReports() {
 	notyService := NewNotify(db)
 	projectIds := strings.Split(os.Getenv("NOTI_PROJECT_IDS"), ",")
 	//fmt.Println("projectIds: ", strings.Split(projectIds, ","))
+	fmt.Println("projectIds", projectIds)
 	configs := make([]models.ConfigNoty, 0)
 
 	for _, id := range projectIds {
@@ -118,7 +119,9 @@ func NotyReports() {
 			configs = append(configs, noty)
 		}
 	}
+	//NotiSlack(db, "B121505", "1", "slack", "C02H99CP3H9")
 	for _, configNoty := range configs {
+		//fmt.Println("configNoty", configNoty.MemberId, configNoty.ProjectId, configNoty.Service, configNoty.ChannelId)
 		NotiSlack(db, configNoty.MemberId, configNoty.ProjectId, configNoty.Service, configNoty.ChannelId)
 	}
 }

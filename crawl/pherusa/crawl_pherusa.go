@@ -33,10 +33,10 @@ func (a *Pherusa) CrawlIssuePherusa(projectId uint, version string) error {
 	if err != nil {
 		return err
 	}
-
-	//projectName := strings.ReplaceAll(project.Prefix, "/projects/", "")
-	//CrawlIssue(c, a.db, projectName, version)
-	CrawlDueDateVersion(c, a.db, "playbook-magic-moment")
+	projectName := strings.ReplaceAll(project.Prefix, "/projects/", "")
+	fmt.Println("projectName",projectName)
+	CrawlIssue(c, a.db, projectName, version)
+	//CrawlDueDateVersion(c, a.db, projectName)
 	err = a.CreateVersion(version, projectId)
 	if err != nil {
 		return err
@@ -106,7 +106,10 @@ func CrawlProject(c *colly.Collector, db *gorm.DB) {
 		}
 	})
 
-	c.Visit(os.Getenv("HOMEPAGE") + "/projects")
+    err := c.Visit(os.Getenv("HOMEPAGE") + "/projects")
+    if err != nil {
+	return 
+    }
 	fmt.Println("Crwal project data finished.")
 }
 
@@ -150,13 +153,20 @@ func CrawlIssue(c *colly.Collector, db *gorm.DB, project string, version string)
 		})
 	})
 
-	c.Limit(&colly.LimitRule{
-		DomainGlob:  "*",
-		RandomDelay: 1 * time.Second,
-	})
+    err := c.Limit(&colly.LimitRule{
+	DomainGlob:  "*",
+	RandomDelay: 1 * time.Second,
+    })
+    if err != nil {
+	return 
+    }
 
 	fullURL := fmt.Sprintf(os.Getenv("HOMEPAGE") + "/projects/" + project + "/issues" + getUrlFromVersion(version))
-	c.Visit(fullURL)
+    err = c.Visit(fullURL)
+    fmt.Println("fullURL",fullURL)
+    if err != nil {
+	return 
+    }
 
 	fmt.Println("Crwal issue data finished.")
 }
@@ -200,16 +210,22 @@ func CrawlActivities(c *colly.Collector, db *gorm.DB) {
 		})
 	})
 
-	c.Limit(&colly.LimitRule{
-		DomainGlob:  "*",
-		RandomDelay: 1 * time.Second,
-	})
+    err := c.Limit(&colly.LimitRule{
+	DomainGlob:  "*",
+	RandomDelay: 1 * time.Second,
+    })
+    if err != nil {
+	return 
+    }
 
 	c.OnRequest(func(r *colly.Request) {
 		fmt.Println("Visiting", r.URL.String())
 	})
 
-	c.Visit(os.Getenv("HOMEPAGE") + "/activity")
+    err = c.Visit(os.Getenv("HOMEPAGE") + "/activity")
+    if err != nil {
+	return
+    }
 	fmt.Println("Crwal activity data finished.")
 }
 
@@ -235,13 +251,19 @@ func CrawlDueDateVersion(c *colly.Collector, db *gorm.DB, project string) {
 		})
 	})
 
-	c.Limit(&colly.LimitRule{
-		DomainGlob:  "*",
-		RandomDelay: 1 * time.Second,
-	})
+    err := c.Limit(&colly.LimitRule{
+	DomainGlob:  "*",
+	RandomDelay: 1 * time.Second,
+    })
+    if err != nil {
+	return 
+    }
 
 	fullURL := fmt.Sprintf(os.Getenv("HOMEPAGE") + "/projects/" + project + "/settings")
-	c.Visit(fullURL)
+    err = c.Visit(fullURL)
+    if err != nil {
+	return 
+    }
 
 	fmt.Println("Crwal due date data finished.")
 }
