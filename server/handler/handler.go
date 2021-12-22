@@ -1,29 +1,30 @@
 package handler
 
 import (
-    "encoding/json"
-    "fmt"
-    "go-scrape-redmine/Notify"
-    "go-scrape-redmine/app/users"
-    userRepository "go-scrape-redmine/app/users/repository"
-    userUsecase "go-scrape-redmine/app/users/usecase"
-    "go-scrape-redmine/config"
-    "go-scrape-redmine/crawl/pherusa"
-    Redmine "go-scrape-redmine/crawl/redmine"
-    "go-scrape-redmine/models"
-    "gorm.io/gorm"
-    "log"
-    "net/http"
-    "strconv"
-    "strings"
-    "time"
+	"encoding/json"
+	"fmt"
+	"go-scrape-redmine/Notify"
+	"go-scrape-redmine/app/users"
+	userRepository "go-scrape-redmine/app/users/repository"
+	userUsecase "go-scrape-redmine/app/users/usecase"
+	"go-scrape-redmine/crawl/pherusa"
+	Redmine "go-scrape-redmine/crawl/redmine"
+	"go-scrape-redmine/models"
+	"gorm.io/gorm"
+	"log"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
-    "github.com/golang-jwt/jwt"
-    "github.com/gorilla/mux"
-    "golang.org/x/crypto/bcrypt"
+	"github.com/golang-jwt/jwt"
+	"github.com/gorilla/mux"
+	"golang.org/x/crypto/bcrypt"
 )
 
-type UserHandler struct{}
+type UserHandler struct {
+	Db *gorm.DB
+}
 
 type response struct {
 	Code    int         `json:"code"`
@@ -34,10 +35,10 @@ type response struct {
 func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-    err := json.NewEncoder(w).Encode(payload)
-    if err != nil {
-	return
-    }
+	err := json.NewEncoder(w).Encode(payload)
+	if err != nil {
+		return
+	}
 }
 
 func newUserUsecase() users.Usecase {
@@ -64,7 +65,7 @@ func generateJWT(email, role string) (string, error) {
 	tokenString, err := token.SignedString(mySigningKey)
 
 	if err != nil {
-	    _ = fmt.Errorf("Something Went Wrong: %s", err.Error())
+		_ = fmt.Errorf("Something Went Wrong: %s", err.Error())
 		return "", err
 	}
 	return tokenString, nil
@@ -77,7 +78,7 @@ func checkPasswordHash(password, hash string) bool {
 
 func (a *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	resp := response{}
-	db := config.DBConnect()
+	db := a.Db
 
 	var user models.User
 	err := json.NewDecoder(r.Body).Decode(&user)
@@ -120,7 +121,7 @@ func (a *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 func (a *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 
 	resp := response{}
-	db := config.DBConnect()
+	db := a.Db
 
 	var authdetails models.Authentication
 	err := json.NewDecoder(r.Body).Decode(&authdetails)
@@ -242,7 +243,7 @@ func weekRange(year, week int) (string, string) {
 }
 func (a *UserHandler) GetActivity(w http.ResponseWriter, r *http.Request) {
 	resp := response{}
-	db := config.DBConnect()
+	db := a.Db
 
 	memberID := r.URL.Query().Get("member")
 	date := r.URL.Query().Get("date")
@@ -360,7 +361,7 @@ func (a *UserHandler) GetEffort(w http.ResponseWriter, r *http.Request) {
 
 	// dung chung
 	resp := response{}
-	db := config.DBConnect()
+    db := a.Db
 	var ranges string
 	week := r.URL.Query().Get("week")
 	year := r.URL.Query().Get("year")
@@ -633,7 +634,7 @@ func (a *UserHandler) CrawData(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *UserHandler) GetAllProject(w http.ResponseWriter, r *http.Request) {
-	db := config.DBConnect()
+    db := a.Db
 	dbprojects := []models.Project{}
 	db.Find(&dbprojects)
 
@@ -675,8 +676,7 @@ type MemberIssue struct {
 func (a *UserHandler) GetAllIssue(w http.ResponseWriter, r *http.Request) {
 	ranges := r.URL.Query().Get("ranges")
 	splitRanges := strings.Split(ranges, "-")
-
-	db := config.DBConnect()
+   	 db := a.Db
 	issue := []models.Issue{}
 	member := models.Member{}
 	var result []getAllIssueResult
@@ -776,7 +776,7 @@ type getAllMemberResult struct {
 }
 
 func (a *UserHandler) GetAllVersionProject(w http.ResponseWriter, r *http.Request) {
-	db := config.DBConnect()
+    db := a.Db
 	projectId := r.URL.Query().Get("project_id")
 
 	var dbprojects []models.VersionProject
@@ -792,7 +792,7 @@ func (a *UserHandler) GetAllMember(w http.ResponseWriter, r *http.Request) {
 	ranges := r.URL.Query().Get("ranges")
 	splitRanges := strings.Split(ranges, "-")
 
-	db := config.DBConnect()
+    db := a.Db
 	var result []getAllMemberResult
 	dbissues := []models.Issue{}
 	dbmembers := []models.Member{}
@@ -841,7 +841,7 @@ func (a *UserHandler) GetAllMember(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *UserHandler) CrawlIssueByVersion(w http.ResponseWriter, r *http.Request) {
-	db := config.DBConnect()
+    	db:= a.Db;
 	projectId := r.URL.Query().Get("project_id")
 	idProject, err := strconv.Atoi(projectId)
 	if err != nil {
@@ -876,8 +876,8 @@ func (a *UserHandler) CrawlIssueByVersion(w http.ResponseWriter, r *http.Request
 }
 
 func (a *UserHandler) SetCurrentVersion(w http.ResponseWriter, r *http.Request) {
-	db := config.DBConnect()
-
+	db := a.Db
+	
 	version := models.VersionProject{}
 	err := json.NewDecoder(r.Body).Decode(&version)
 	if err != nil {
@@ -943,7 +943,7 @@ func (a *UserHandler) SetCurrentVersion(w http.ResponseWriter, r *http.Request) 
 }
 
 func (a *UserHandler) CreateConfig(w http.ResponseWriter, r *http.Request) {
-	db := config.DBConnect()
+	db := a.Db
 
 	configNoti := models.ConfigNoty{}
 	err := json.NewDecoder(r.Body).Decode(&configNoti)
@@ -973,7 +973,7 @@ func (a *UserHandler) CreateConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *UserHandler) UpdateConfig(w http.ResponseWriter, r *http.Request) {
-	db := config.DBConnect()
+	db := a.Db
 	idStr := mux.Vars(r)["id"]
 	if idStr == "" {
 		resp := response{}
@@ -1020,7 +1020,8 @@ func (a *UserHandler) UpdateConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *UserHandler) GetAllConfig(w http.ResponseWriter, r *http.Request) {
-	db := config.DBConnect()
+	//db := a.Db
+	db := a.Db
 	id := r.URL.Query().Get("project_id")
 
 	if id == "" {
@@ -1048,7 +1049,7 @@ func (a *UserHandler) GetAllConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *UserHandler) GetConfigById(w http.ResponseWriter, r *http.Request) {
-	db := config.DBConnect()
+	db := a.Db
 	idStr := mux.Vars(r)["id"]
 	if idStr == "" {
 		resp := response{}
@@ -1075,7 +1076,7 @@ func (a *UserHandler) GetConfigById(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *UserHandler) DeleteConfig(w http.ResponseWriter, r *http.Request) {
-	db := config.DBConnect()
+	db := a.Db
 	id := mux.Vars(r)["id"]
 	if id == "" {
 		resp := response{}

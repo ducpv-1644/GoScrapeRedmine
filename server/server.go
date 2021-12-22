@@ -1,14 +1,14 @@
 package server
 
 import (
-	"fmt"
-	"github.com/golang-jwt/jwt"
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
-	"go-scrape-redmine/server/handler"
-	"net/http"
-	"strings"
-	"sync"
+    "fmt"
+    "github.com/golang-jwt/jwt"
+    "github.com/gorilla/handlers"
+    "github.com/gorilla/mux"
+    "go-scrape-redmine/server/handler"
+    "gorm.io/gorm"
+    "net/http"
+    "strings"
 )
 
 type response struct {
@@ -70,11 +70,10 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handle
 	})
 }
 
-func Run(wg *sync.WaitGroup) {
+func Run( db *gorm.DB) {
 	router := mux.NewRouter()
 	userHandler := handler.UserHandler{}
-	defer wg.Done()
-
+	userHandler.Db = db
 	headersOk := handlers.AllowedHeaders([]string{"Accept", "content-type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization","Access-Control-Allow-Origin"})
 	originsOk := handlers.AllowedOrigins([]string{"*"})
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS", "DELETE"})

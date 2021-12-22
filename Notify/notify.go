@@ -4,16 +4,28 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"go-scrape-redmine/config"
 	"go-scrape-redmine/models"
+	"gorm.io/gorm"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
-
-	"gorm.io/gorm"
 )
+
+type notyReports struct {
+	db *gorm.DB
+}
+
+type NotiReports interface {
+	NotyReports()
+}
+
+func NewNotiReport(db *gorm.DB) NotiReports {
+	return notyReports{
+		db: db,
+	}
+}
 
 //func NotiChatWork() {
 //
@@ -48,6 +60,7 @@ import (
 //	}
 //	return
 //}
+
 func NotiSlack(db *gorm.DB, receiversStr, projectId, service, channelId string) {
 
 	receivers := strings.Split(receiversStr, ",")
@@ -72,7 +85,7 @@ func NotiSlack(db *gorm.DB, receiversStr, projectId, service, channelId string) 
 		Attachments: attachments,
 	}
 	body, _ := json.Marshal(bot)
-	fmt.Println("body",bytes.NewBuffer(body))
+	fmt.Println("body", bytes.NewBuffer(body))
 	_, err = http.Post(os.Getenv("URL_NOTI"), "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		//Failed to read response.
@@ -101,9 +114,10 @@ func convertDateToString(time *time.Time) string {
 	return date + "/" + month + "/" + year
 }
 
-func NotyReports() {
-	config.LoadENV()
-	db := config.DBConnect()
+func (n notyReports) NotyReports() {
+	//config.LoadENV()
+	//db := config.DBConnect()
+	db := n.db
 	notyService := NewNotify(db)
 	projectIds := strings.Split(os.Getenv("NOTI_PROJECT_IDS"), ",")
 	//fmt.Println("projectIds: ", strings.Split(projectIds, ","))
@@ -119,9 +133,9 @@ func NotyReports() {
 			configs = append(configs, noty)
 		}
 	}
-	//NotiSlack(db, "B121505", "3", "slack", "C02H99CP3H9")
-	for _, configNoty := range configs {
-		//fmt.Println("configNoty", configNoty.MemberId, configNoty.ProjectId, configNoty.Service, configNoty.ChannelId)
-		NotiSlack(db, configNoty.MemberId, configNoty.ProjectId, configNoty.Service, configNoty.ChannelId)
-	}
+	NotiSlack(db, "B121505", "3", "slack", "C02H99CP3H9")
+	//for _, configNoty := range configs {
+	//	//fmt.Println("configNoty", configNoty.MemberId, configNoty.ProjectId, configNoty.Service, configNoty.ChannelId)
+	//	NotiSlack(db, configNoty.MemberId, configNoty.ProjectId, configNoty.Service, configNoty.ChannelId)
+	//}
 }
