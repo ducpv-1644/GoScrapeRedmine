@@ -58,15 +58,15 @@ func main() {
 	wg.Add(numWorkers)
 
 	cr := cron.New()
-	_, err := cr.AddFunc("0 18 * * *", Redmine.NewRedmine().CrawlRedmine)
+	_, err := cr.AddFunc("0 15 * * *", Redmine.NewRedmine().CrawlRedmine)
 	if err != nil {
 		return
 	}
-	_, err = cr.AddFunc("0 18 * * *", Pherusa.NewPherusa(db).CrawlPherusa)
+	_, err = cr.AddFunc("0 15 * * *", Pherusa.NewPherusa(db).CrawlPherusa)
 	if err != nil {
 		return
 	}
-	_, err = cr.AddFunc("0 18 * * *", Notify.NotyReports)
+	_, err = cr.AddFunc("0 16 * * *", Notify.NotyReports)
 	if err != nil {
 		return
 	}
