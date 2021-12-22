@@ -3,12 +3,15 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"go-scrape-redmine/Notify"
 	"go-scrape-redmine/app/users"
 	userRepository "go-scrape-redmine/app/users/repository"
 	userUsecase "go-scrape-redmine/app/users/usecase"
 	"go-scrape-redmine/config"
+	"go-scrape-redmine/crawl/pherusa"
 	Redmine "go-scrape-redmine/crawl/redmine"
 	"go-scrape-redmine/models"
+	"gorm.io/gorm"
 	"log"
 	"net/http"
 	"strconv"
@@ -644,6 +647,7 @@ type GetIssueByMember struct {
 	SumEstimatedTimeProject string  `json:"sum_est_project_time"`
 	IssueResult             []getAllIssueResult
 }
+
 type getAllIssueResult struct {
 	IssueId            string `json:"issue_id"`
 	IssueProject       string `json:"issue_project"`
@@ -768,6 +772,19 @@ type getAllMemberResult struct {
 	SumEstimatedTime float64
 }
 
+func (a *UserHandler) GetAllVersionProject(w http.ResponseWriter, r *http.Request) {
+	db := config.DBConnect()
+	projectId := r.URL.Query().Get("project_id")
+
+	var dbprojects []models.VersionProject
+	db.Where("project_id = ?", projectId).Find(&dbprojects)
+
+	resp := response{}
+	resp.Code = http.StatusOK
+	resp.Result = dbprojects
+	RespondWithJSON(w, http.StatusOK, resp)
+}
+
 func (a *UserHandler) GetAllMember(w http.ResponseWriter, r *http.Request) {
 	ranges := r.URL.Query().Get("ranges")
 	splitRanges := strings.Split(ranges, "-")
@@ -817,5 +834,266 @@ func (a *UserHandler) GetAllMember(w http.ResponseWriter, r *http.Request) {
 	resp := response{}
 	resp.Code = http.StatusOK
 	resp.Result = result
+	RespondWithJSON(w, http.StatusOK, resp)
+}
+
+func (a *UserHandler) CrawlIssueByVersion(w http.ResponseWriter, r *http.Request) {
+	db := config.DBConnect()
+	projectId := r.URL.Query().Get("project_id")
+	idProject, err := strconv.Atoi(projectId)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = "project id is invalidate"
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+	version := r.URL.Query().Get("version")
+	if version == "" {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = "version is invalidate"
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	err = pherusa.NewPherusa(db).CrawlIssuePherusa(uint(idProject), version)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadGateway
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadGateway, resp)
+		return
+	}
+
+	resp := response{}
+	resp.Code = http.StatusOK
+	RespondWithJSON(w, http.StatusOK, resp)
+
+}
+
+func (a *UserHandler) SetCurrentVersion(w http.ResponseWriter, r *http.Request) {
+	db := config.DBConnect()
+
+	version := models.VersionProject{}
+	err := json.NewDecoder(r.Body).Decode(&version)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	notFound := false
+	var oldVersion models.VersionProject
+	err = db.Where("current = true AND project_id = ?", version.ProjectId).First(&oldVersion).Error
+
+	if err == gorm.ErrRecordNotFound {
+		notFound = true
+		err = nil
+	}
+
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	if notFound != true {
+		oldVersion.Current = false
+
+		err = db.Where("id = ?", oldVersion.ID).Save(&oldVersion).Error
+		if err != nil {
+			resp := response{}
+			resp.Code = http.StatusBadRequest
+			resp.Message = err.Error()
+			RespondWithJSON(w, http.StatusBadRequest, resp)
+			return
+		}
+	}
+
+	newVersion := models.VersionProject{}
+	err = db.Where("id = ? AND project_id = ?", version.ID, version.ProjectId).First(&newVersion).Error
+	newVersion.Current = true
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+	err = db.Where("id = ? AND project_id = ?", newVersion.ID, version.ProjectId).Save(&newVersion).Error
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	resp := response{}
+	resp.Code = http.StatusOK
+	RespondWithJSON(w, http.StatusOK, resp)
+}
+
+func (a *UserHandler) CreateConfig(w http.ResponseWriter, r *http.Request) {
+	db := config.DBConnect()
+
+	configNoti := models.ConfigNoty{}
+	err := json.NewDecoder(r.Body).Decode(&configNoti)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = err.Error()
+
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	createConfig, err := Notify.NewNotify(db).CreateConfig(configNoti)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadGateway
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadGateway, resp)
+		return
+	}
+
+	resp := response{
+		Result: createConfig,
+	}
+	resp.Code = http.StatusOK
+	RespondWithJSON(w, http.StatusOK, resp)
+}
+
+func (a *UserHandler) UpdateConfig(w http.ResponseWriter, r *http.Request) {
+	db := config.DBConnect()
+	idStr := mux.Vars(r)["id"]
+	if idStr == "" {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = "id is invalid"
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+	updateConfig := models.ConfigNoty{}
+	err = json.NewDecoder(r.Body).Decode(&updateConfig)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	updateConfig.ID = uint(id)
+
+	createConfig, err := Notify.NewNotify(db).UpdateConfig(updateConfig)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadGateway
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadGateway, resp)
+		return
+	}
+
+	resp := response{
+		Result: createConfig,
+	}
+	resp.Code = http.StatusOK
+	RespondWithJSON(w, http.StatusOK, resp)
+}
+
+func (a *UserHandler) GetAllConfig(w http.ResponseWriter, r *http.Request) {
+	db := config.DBConnect()
+	id := r.URL.Query().Get("project_id")
+
+	if id == "" {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = "project_id is invalid"
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	configArr, err := Notify.NewNotify(db).GetAllConfig(id)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadGateway
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadGateway, resp)
+		return
+	}
+
+	resp := response{
+		Result: configArr,
+	}
+	resp.Code = http.StatusOK
+	RespondWithJSON(w, http.StatusOK, resp)
+}
+
+func (a *UserHandler) GetConfigById(w http.ResponseWriter, r *http.Request) {
+	db := config.DBConnect()
+	idStr := mux.Vars(r)["id"]
+	if idStr == "" {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = "id is invalid"
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	config, err := Notify.NewNotify(db).GetConfigById(idStr)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadGateway
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadGateway, resp)
+		return
+	}
+
+	resp := response{
+		Result: config,
+	}
+	resp.Code = http.StatusOK
+	RespondWithJSON(w, http.StatusOK, resp)
+}
+
+func (a *UserHandler) DeleteConfig(w http.ResponseWriter, r *http.Request) {
+	db := config.DBConnect()
+	id := mux.Vars(r)["id"]
+	if id == "" {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = "id is invalid"
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	err := Notify.NewNotify(db).DeleteConfig(id)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadGateway
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadGateway, resp)
+		return
+	}
+
+	resp := response{
+		Result: "",
+	}
+	resp.Code = http.StatusOK
 	RespondWithJSON(w, http.StatusOK, resp)
 }

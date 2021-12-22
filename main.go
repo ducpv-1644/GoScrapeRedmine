@@ -3,9 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"go-scrape-redmine/Notify"
 	"go-scrape-redmine/config"
 	"go-scrape-redmine/crawl/pherusa"
-	_ "go-scrape-redmine/crawl/pherusa"
+	Pherusa "go-scrape-redmine/crawl/pherusa"
 	Redmine "go-scrape-redmine/crawl/redmine"
 	"go-scrape-redmine/models"
 	Member "go-scrape-redmine/seed/members"
@@ -32,8 +33,21 @@ func main() {
 		return
 	} else if seed == "issue" {
 		fmt.Println("Importing issue")
-		Redmine.NewRedmine().CrawlRedmine()
-		pherusa.NewPherusa().CrawlPherusa()
+		//Redmine.NewRedmine().CrawlRedmine()
+		pherusa.NewPherusa(db).CrawlPherusa()
+		return
+	} else if seed == "getissue" {
+		Notify.NewNotify(db).GetReportMember("pherusa", "854")
+		return
+	} else if seed == "apiIssue" {
+		err := pherusa.NewPherusa(db).CrawlIssuePherusa(3, "854")
+		if err != nil {
+		    fmt.Println("err",err)
+			return
+		}
+		return
+	} else if seed == "noti" {
+		Notify.NotyReports()
 		return
 	} else if seed != "none" {
 		fmt.Println("Flag seed invalid")
@@ -44,7 +58,18 @@ func main() {
 	wg.Add(num_workers)
 
 	cr := cron.New()
-	cr.AddFunc("0 18 * * *", Redmine.NewRedmine().CrawlRedmine)
+	_, err := cr.AddFunc("0 18 * * *", Redmine.NewRedmine().CrawlRedmine)
+	if err != nil {
+		return
+	}
+	_, err = cr.AddFunc("0 18 * * *", Pherusa.NewPherusa(db).CrawlPherusa)
+	if err != nil {
+		return
+	}
+	_, err = cr.AddFunc("0 18 * * *", Notify.NotyReports)
+	if err != nil {
+		return
+	}
 	cr.Start()
 
 	go server.Run(&wg)

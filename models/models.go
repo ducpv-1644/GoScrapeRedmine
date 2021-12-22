@@ -26,15 +26,17 @@ type Token struct {
 type Project struct {
 	gorm.Model
 	Name   string  `json:"name"`
-	Prefix string  `json:"prefix`
+	Prefix string  `json:"prefix"`
 	Issue  []Issue `gorm:"many2many:project_issue;"`
 }
+
 type Member struct {
 	gorm.Model
 	MemberId    string `json:"menberid"`
 	MemberName  string `json:"menbername"`
 	MemberEmail string `json:"menberemail"`
 }
+
 type Activity struct {
 	gorm.Model
 	MemberId    string `json:"menberid"`
@@ -74,6 +76,30 @@ type Issue struct {
 	IssueCreated         string `json:"issue_created"`
 	IssueUpdated         string `json:"issue_updated"`
 	IssueSource          string `json:"issue_source"`
+	IssueVersion         string `json:"issue_version"`
+	IssueTarget          string `json:"issue_target"`
+	IssueState           string `json:"issue_state"`
+}
+
+type VersionProject struct {
+	gorm.Model
+	ProjectId uint   `json:"project_id"`
+	Version   string `json:"version"`
+	Current   bool   `json:"current"`
+}
+
+type ConfigNoty struct {
+	gorm.Model
+	Service   string `json:"service"`
+	ChannelId string `json:"channel_id"`
+	MemberId  string `json:"member_id"`
+	ProjectId string `json:"project_id"`
+}
+
+type DueDateVersion struct {
+	gorm.Model
+	Version string `json:"version"`
+	DueDate string `json:"due_date"`
 }
 
 func DBMigrate(db *gorm.DB) {
@@ -82,4 +108,7 @@ func DBMigrate(db *gorm.DB) {
 	db.AutoMigrate(&Member{})
 	db.AutoMigrate(&Activity{})
 	db.AutoMigrate(&Issue{})
+	db.AutoMigrate(&VersionProject{})
+	db.AutoMigrate(&ConfigNoty{})
+	db.AutoMigrate(&DueDateVersion{})
 }

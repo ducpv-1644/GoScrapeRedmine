@@ -2,7 +2,6 @@ package pherusa
 
 import (
 	"fmt"
-	"go-scrape-redmine/config"
 	"go-scrape-redmine/crawl"
 	"go-scrape-redmine/models"
 	"net/http"
@@ -16,11 +15,53 @@ import (
 	"gorm.io/gorm"
 )
 
-func NewPherusa() crawl.Pherusa {
-	return &Pherusa{}
+func NewPherusa(db *gorm.DB) crawl.Pherusa {
+	return &Pherusa{
+		db: db,
+	}
 }
 
-type Pherusa struct{}
+type Pherusa struct {
+	db *gorm.DB
+}
+
+func (a *Pherusa) CrawlIssuePherusa(projectId uint, version string) error {
+	c := initColly(os.Getenv("HOMEPAGE"))
+
+	project := models.Project{}
+	err := a.db.First(&project, projectId).Error
+	if err != nil {
+		return err
+	}
+	projectName := strings.ReplaceAll(project.Prefix, "/projects/", "")
+	fmt.Println("projectName",projectName)
+	CrawlIssue(c, a.db, projectName, version)
+	//CrawlDueDateVersion(c, a.db, projectName)
+	err = a.CreateVersion(version, projectId)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *Pherusa) CreateVersion(version string, projectId uint) error {
+	versionProject := models.VersionProject{}
+	err := a.db.Where("project_id = ? and version = ?", projectId, version).First(&versionProject).Error
+
+	if err == gorm.ErrRecordNotFound {
+		a.db.Create(&models.VersionProject{
+			ProjectId: projectId,
+			Version:   version,
+			Current:   false,
+		})
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func initColly(url string) *colly.Collector {
 	c := colly.NewCollector(
@@ -65,11 +106,15 @@ func CrawlProject(c *colly.Collector, db *gorm.DB) {
 		}
 	})
 
-	c.Visit(os.Getenv("HOMEPAGE") + "/projects")
+    err := c.Visit(os.Getenv("HOMEPAGE") + "/projects")
+    if err != nil {
+	return 
+    }
 	fmt.Println("Crwal project data finished.")
 }
 
-func CrawlIssue(c *colly.Collector, db *gorm.DB) {
+func CrawlIssue(c *colly.Collector, db *gorm.DB, project string, version string) {
+	fmt.Println("Crawl issue")
 	c.OnHTML("div.autoscroll tbody", func(e *colly.HTMLElement) {
 		e.ForEach("tr", func(_ int, tr *colly.HTMLElement) {
 			issue := models.Issue{
@@ -82,14 +127,21 @@ func CrawlIssue(c *colly.Collector, db *gorm.DB) {
 				IssueAssignee:      tr.DOM.Children().Filter(".assigned_to").Text(),
 				IssueTargetVersion: tr.DOM.Children().Filter(".fixed_version").Text(),
 				IssueDueDate:       tr.DOM.Children().Filter(".due_date").Text(),
+				IssueStartDate:     tr.DOM.Children().Filter(".start_date").Text(),
 				IssueEstimatedTime: tr.DOM.Children().Filter(".estimated_hours").Text(),
+				IssueDoneRatio:     tr.DOM.Children().Filter(".done_ratio").Text(),
 				IssueSource:        "pherusa",
+				IssueVersion:       version,
+				IssueState:         "",
 			}
+			overDueId := tr.DOM.Filter(".overdue").Children().Filter(".id").Text()
+			if overDueId != "" {
+				issue.IssueState = "overdue"
+			}
+
 			var dbIssue models.Issue
 
 			db.Find(&dbIssue, issue)
-
-			issue.IssueSource = "pherusa"
 
 			if dbIssue == (models.Issue{}) {
 				db.Create(&issue)
@@ -101,19 +153,20 @@ func CrawlIssue(c *colly.Collector, db *gorm.DB) {
 		})
 	})
 
-	c.Limit(&colly.LimitRule{
-		DomainGlob:  "*",
-		RandomDelay: 1 * time.Second,
-	})
+    err := c.Limit(&colly.LimitRule{
+	DomainGlob:  "*",
+	RandomDelay: 1 * time.Second,
+    })
+    if err != nil {
+	return 
+    }
 
-	c.OnRequest(func(r *colly.Request) {
-		fmt.Println("Visiting", r.URL.String())
-	})
-
-	for i := 1; i <= 5; i++ {
-		fullURL := fmt.Sprintf(os.Getenv("HOMEPAGE") + "/issues?page=" + strconv.Itoa(i) + "&per_page=100")
-		c.Visit(fullURL)
-	}
+	fullURL := fmt.Sprintf(os.Getenv("HOMEPAGE") + "/projects/" + project + "/issues" + getUrlFromVersion(version))
+    err = c.Visit(fullURL)
+    fmt.Println("fullURL",fullURL)
+    if err != nil {
+	return 
+    }
 
 	fmt.Println("Crwal issue data finished.")
 }
@@ -157,21 +210,62 @@ func CrawlActivities(c *colly.Collector, db *gorm.DB) {
 		})
 	})
 
-	c.Limit(&colly.LimitRule{
-		DomainGlob:  "*",
-		RandomDelay: 1 * time.Second,
-	})
+    err := c.Limit(&colly.LimitRule{
+	DomainGlob:  "*",
+	RandomDelay: 1 * time.Second,
+    })
+    if err != nil {
+	return 
+    }
 
 	c.OnRequest(func(r *colly.Request) {
 		fmt.Println("Visiting", r.URL.String())
 	})
 
-	c.Visit(os.Getenv("HOMEPAGE") + "/activity")
+    err = c.Visit(os.Getenv("HOMEPAGE") + "/activity")
+    if err != nil {
+	return
+    }
 	fmt.Println("Crwal activity data finished.")
 }
 
-func CrawlMember(c *colly.Collector, db *gorm.DB) {
+func CrawlDueDateVersion(c *colly.Collector, db *gorm.DB, project string) {
 
+	fmt.Println("Crawl due date ")
+
+	c.OnHTML("#tab-content-versions > table > tbody", func(e *colly.HTMLElement) {
+		fmt.Println(c)
+		fmt.Println(e)
+		e.ForEach("tr", func(_ int, tr *colly.HTMLElement) {
+			//issue := models.DueDateVersion{}
+			fmt.Println(tr.DOM.Children().Filter(".date").Text())
+			//db.Find(&dbIssue, issue)
+			//
+			//if dbIssue == (models.Issue{}) {
+			//	db.Create(&issue)
+			//}
+			//if dbIssue.IssueId == issue.IssueId {
+			//	db.Model(&dbIssue).Where("issue_id = ?", issue.IssueId).Updates(issue)
+			//}
+
+		})
+	})
+
+    err := c.Limit(&colly.LimitRule{
+	DomainGlob:  "*",
+	RandomDelay: 1 * time.Second,
+    })
+    if err != nil {
+	return 
+    }
+
+	fullURL := fmt.Sprintf(os.Getenv("HOMEPAGE") + "/projects/" + project + "/settings")
+    err = c.Visit(fullURL)
+    if err != nil {
+	return 
+    }
+
+	fmt.Println("Crwal due date data finished.")
 }
 
 func getMemberId(url string) string {
@@ -181,6 +275,14 @@ func getMemberId(url string) string {
 	re, _ := regexp.Compile(`(avatar\?id=)\d+`)
 	result := strings.Split(string(re.Find([]byte(url))), "=")
 	return result[1]
+}
+
+func getUrlFromVersion(version string) string {
+	if version == "" {
+		return ""
+	} else {
+		return "?set_filter=1&sort=id:desc&f[]=fixed_version_id&op[fixed_version_id]==&v[fixed_version_id][]=" + version + "&f[]=tracker_id&op[tracker_id]=!&v[tracker_id][]=4&v[tracker_id][]=15&f[]=&c[]=status&c[]=assigned_to&c[]=estimated_hours&c[]=spent_hours&c[]=start_date&c[]=due_date&c[]=fixed_version&group_by=&t[]="
+	}
 }
 
 func getTypeIssue(t string) string {
@@ -204,10 +306,7 @@ func getTypeIssue(t string) string {
 
 func (a *Pherusa) CrawlPherusa() {
 	fmt.Println("Cron running...crawling data.")
-	db := config.DBConnect()
 	c := initColly(os.Getenv("HOMEPAGE"))
-	fmt.Println(os.Getenv("HOMEPAGE"))
-	CrawlProject(c, db)
-	CrawlIssue(c, db)
-	CrawlActivities(c, db)
+	CrawlProject(c, a.db)
+	CrawlActivities(c, a.db)
 }
