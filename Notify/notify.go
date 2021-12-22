@@ -72,7 +72,7 @@ func NotiSlack(db *gorm.DB, receiversStr, projectId, service, channelId string) 
 		Attachments: attachments,
 	}
 	body, _ := json.Marshal(bot)
-	//fmt.Println("body",bytes.NewBuffer(body))
+	fmt.Println("body",bytes.NewBuffer(body))
 	_, err = http.Post(os.Getenv("URL_NOTI"), "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		//Failed to read response.
@@ -119,7 +119,7 @@ func NotyReports() {
 			configs = append(configs, noty)
 		}
 	}
-	//NotiSlack(db, "B121505", "1", "slack", "C02H99CP3H9")
+	//NotiSlack(db, "B121505", "3", "slack", "C02H99CP3H9")
 	for _, configNoty := range configs {
 		//fmt.Println("configNoty", configNoty.MemberId, configNoty.ProjectId, configNoty.Service, configNoty.ChannelId)
 		NotiSlack(db, configNoty.MemberId, configNoty.ProjectId, configNoty.Service, configNoty.ChannelId)

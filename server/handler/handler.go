@@ -1,26 +1,26 @@
 package handler
 
 import (
-	"encoding/json"
-	"fmt"
-	"go-scrape-redmine/Notify"
-	"go-scrape-redmine/app/users"
-	userRepository "go-scrape-redmine/app/users/repository"
-	userUsecase "go-scrape-redmine/app/users/usecase"
-	"go-scrape-redmine/config"
-	"go-scrape-redmine/crawl/pherusa"
-	Redmine "go-scrape-redmine/crawl/redmine"
-	"go-scrape-redmine/models"
-	"gorm.io/gorm"
-	"log"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
+    "encoding/json"
+    "fmt"
+    "go-scrape-redmine/Notify"
+    "go-scrape-redmine/app/users"
+    userRepository "go-scrape-redmine/app/users/repository"
+    userUsecase "go-scrape-redmine/app/users/usecase"
+    "go-scrape-redmine/config"
+    "go-scrape-redmine/crawl/pherusa"
+    Redmine "go-scrape-redmine/crawl/redmine"
+    "go-scrape-redmine/models"
+    "gorm.io/gorm"
+    "log"
+    "net/http"
+    "strconv"
+    "strings"
+    "time"
 
-	"github.com/golang-jwt/jwt"
-	"github.com/gorilla/mux"
-	"golang.org/x/crypto/bcrypt"
+    "github.com/golang-jwt/jwt"
+    "github.com/gorilla/mux"
+    "golang.org/x/crypto/bcrypt"
 )
 
 type UserHandler struct{}
@@ -34,7 +34,10 @@ type response struct {
 func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(payload)
+    err := json.NewEncoder(w).Encode(payload)
+    if err != nil {
+	return
+    }
 }
 
 func newUserUsecase() users.Usecase {
@@ -56,12 +59,12 @@ func generateJWT(email, role string) (string, error) {
 	claims["authorized"] = true
 	claims["email"] = email
 	claims["role"] = "user"
-	claims["exp"] = time.Now().Add(time.Minute * 30).Unix()
+	//claims["exp"] = time.Now().Add(time.Minute * 30).Unix()
 
 	tokenString, err := token.SignedString(mySigningKey)
 
 	if err != nil {
-		fmt.Errorf("Something Went Wrong: %s", err.Error())
+	    _ = fmt.Errorf("Something Went Wrong: %s", err.Error())
 		return "", err
 	}
 	return tokenString, nil

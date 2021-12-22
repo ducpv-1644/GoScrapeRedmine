@@ -16,7 +16,7 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-const num_workers = 1
+const numWorkers = 1
 
 func main() {
 
@@ -36,7 +36,7 @@ func main() {
 		//Redmine.NewRedmine().CrawlRedmine()
 		pherusa.NewPherusa(db).CrawlPherusa()
 		return
-	} else if seed == "getissue" {
+	} else if seed == "getIssue" {
 		Notify.NewNotify(db).GetReportMember("pherusa", "854")
 		return
 	} else if seed == "apiIssue" {
@@ -55,7 +55,7 @@ func main() {
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(num_workers)
+	wg.Add(numWorkers)
 
 	cr := cron.New()
 	_, err := cr.AddFunc("0 18 * * *", Redmine.NewRedmine().CrawlRedmine)
