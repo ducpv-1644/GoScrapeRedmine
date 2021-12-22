@@ -8,9 +8,7 @@ import (
     "go-scrape-redmine/config"
     "go-scrape-redmine/crawl/pherusa"
     Pherusa "go-scrape-redmine/crawl/pherusa"
-    Redmine "go-scrape-redmine/crawl/redmine"
     "go-scrape-redmine/models"
-    Member "go-scrape-redmine/seed/members"
     "go-scrape-redmine/server"
 )
 
@@ -24,11 +22,12 @@ func main() {
 	flag.StringVar(&seed, "seed", "none", "seed option")
 	flag.Parse()
 
-	if seed == "member" {
-		fmt.Println("Importing member")
-		Member.NewMember().SeedMember()
-		return
-	} else if seed == "issue" {
+	//if seed == "member" {
+	//	fmt.Println("Importing member")
+	//	Member.NewMember().SeedMember()
+	//	return
+	//} else
+	if seed == "issue" {
 		fmt.Println("Importing issue")
 		//Redmine.NewRedmine().CrawlRedmine()
 		pherusa.NewPherusa(db).CrawlPherusa()
@@ -53,11 +52,11 @@ func main() {
 
 
 	cr := cron.New()
-	_, err := cr.AddFunc("0 15 * * *", Redmine.NewRedmine().CrawlRedmine)
-	if err != nil {
-		return
-	}
-	_, err = cr.AddFunc("0 15 * * *", Pherusa.NewPherusa(db).CrawlPherusa)
+	//_, err := cr.AddFunc("0 15 * * *", Redmine.NewRedmine().CrawlRedmine)
+	//if err != nil {
+	//	return
+	//}
+	_, err := cr.AddFunc("0 15 * * *", Pherusa.NewPherusa(db).CrawlPherusa)
 	if err != nil {
 		return
 	}
