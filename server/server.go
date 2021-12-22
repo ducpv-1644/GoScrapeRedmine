@@ -2,14 +2,13 @@ package server
 
 import (
 	"fmt"
+	"github.com/golang-jwt/jwt"
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 	"go-scrape-redmine/server/handler"
 	"net/http"
 	"strings"
 	"sync"
-
-	"github.com/golang-jwt/jwt"
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
 )
 
 type response struct {
@@ -73,33 +72,34 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handle
 
 func Run(wg *sync.WaitGroup) {
 	router := mux.NewRouter()
-	user_handler := handler.UserHandler{}
+	userHandler := handler.UserHandler{}
 	defer wg.Done()
 
-	headersOk := handlers.AllowedHeaders([]string{"Accept", "content-type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization"})
+	headersOk := handlers.AllowedHeaders([]string{"Accept", "content-type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization","Access-Control-Allow-Origin"})
 	originsOk := handlers.AllowedOrigins([]string{"*"})
-	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
+	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS", "DELETE"})
 
 	router.Handle("/", isAuthorized(handlerx)).Methods("GET")
-	router.HandleFunc("/signup", user_handler.SignUp).Methods("POST")
-	router.HandleFunc("/signin", user_handler.SignIn).Methods("POST")
-	router.Handle("/activity", isAuthorized(user_handler.GetActivity)).Methods("GET")
-	router.Handle("/effort", isAuthorized(user_handler.GetEffort)).Methods("GET")
-	router.Handle("/crawl", isAuthorized(user_handler.CrawData)).Methods("POST")
-	router.Handle("/projects", isAuthorized(user_handler.GetAllProject)).Methods("GET")
+	router.HandleFunc("/signup", userHandler.SignUp).Methods("POST")
+	router.HandleFunc("/signin", userHandler.SignIn).Methods("POST")
+	router.Handle("/activity", isAuthorized(userHandler.GetActivity)).Methods("GET")
+	router.Handle("/effort", isAuthorized(userHandler.GetEffort)).Methods("GET")
+	router.Handle("/crawl", isAuthorized(userHandler.CrawData)).Methods("POST")
+	router.Handle("/projects", isAuthorized(userHandler.GetAllProject)).Methods("GET")
 	// router.Handle("/members", isAuthorized(user_handler.GetAllMember)).Methods("GET")
-	router.HandleFunc("/members", user_handler.GetAllMember).Methods("GET")
-	router.Handle("/member/{id}", isAuthorized(user_handler.GetAllIssue)).Methods("GET")
-	router.Handle("/project_versions", isAuthorized(user_handler.GetAllVersionProject)).Methods("GET")
-	router.HandleFunc("/crawl_issues", user_handler.CrawlIssueByVersion).Methods("GET")
-	router.HandleFunc("/version_project", user_handler.SetCurrentVersion).Methods("POST")
-	router.HandleFunc("/config", user_handler.CreateConfig).Methods("POST")
-	router.HandleFunc("/config/{id}", user_handler.UpdateConfig).Methods("PUT")
-	router.HandleFunc("/config", user_handler.GetAllConfig).Methods("GET")
-	router.HandleFunc("/config/{id}", user_handler.GetConfigById).Methods("GET")
-	router.HandleFunc("/config/{id}", user_handler.DeleteConfig).Methods("DELETE")
+	router.HandleFunc("/members", userHandler.GetAllMember).Methods("GET")
+	router.Handle("/member/{id}", isAuthorized(userHandler.GetAllIssue)).Methods("GET")
+	router.Handle("/project_versions", isAuthorized(userHandler.GetAllVersionProject)).Methods("GET")
+	router.Handle("/crawl_issues", isAuthorized(userHandler.CrawlIssueByVersion)).Methods("GET")
+	router.Handle("/version_project", isAuthorized(userHandler.SetCurrentVersion)).Methods("POST")
+	router.Handle("/config", isAuthorized(userHandler.CreateConfig)).Methods("POST")
+	router.Handle("/config/{id}", isAuthorized(userHandler.UpdateConfig)).Methods("POST")
+	router.Handle("/config", isAuthorized(userHandler.GetAllConfig)).Methods("GET")
+	router.Handle("/config/{id}",isAuthorized( userHandler.GetConfigById)).Methods("GET")
+	router.Handle("/config/{id}",isAuthorized(userHandler.DeleteConfig)).Methods("DELETE")
 	fmt.Println("Server started port 8000!")
 	err := http.ListenAndServe(":8000", handlers.CORS(originsOk, headersOk, methodsOk)(router))
+	fmt.Println("err",err)
 	if err != nil {
 		return
 	}
