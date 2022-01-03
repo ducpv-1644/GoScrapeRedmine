@@ -144,7 +144,7 @@ func (n notify) GetReportMember(source string, version string) ([]Block, string)
 						fmt.Println("error during convert string to time: ", err)
 
 					}
-					if dueDate.After(time.Now())  || dueDate.Equal(time.Now()){
+					if dueDate.After(time.Now()) || dueDate.Equal(time.Now()) {
 						noSpentTImeArr = append(noSpentTImeArr, issue.IssueId)
 					}
 				}
@@ -155,7 +155,7 @@ func (n notify) GetReportMember(source string, version string) ([]Block, string)
 						fmt.Println("error during convert string to time: ", err)
 
 					}
-					if startDate.After(time.Now()) || startDate.Equal(time.Now()){
+					if startDate.After(time.Now()) || startDate.Equal(time.Now()) {
 						noDueTimeArr = append(noDueTimeArr, issue.IssueId)
 					}
 				}
@@ -217,17 +217,49 @@ func (n notify) GetReportMember(source string, version string) ([]Block, string)
 
 			str = append(str, Free)
 		}
-		blocks = append(blocks, Block{
-			Type: "section",
-			Text: MessageBlock{
-				Type: "mrkdwn",
-				Text: "- " + member + ": " + strings.Join(str, " | "),
-			},
-		})
 
+		if len(str) > 0 {
+			blocks = append(blocks, Block{
+				Type: "section",
+				Text: MessageBlock{
+					Type: "mrkdwn",
+					Text: "- " + member + ": " + strings.Join(str, " | "),
+				},
+			})
+		}
 	}
 
 	return blocks, targetVersion
+}
+
+func (n notify) CreateSession(session models.SessionId) (models.SessionId, error) {
+	//TODO implement me
+	err := n.db.Create(&session).Error
+	if err != nil {
+		return models.SessionId{}, err
+	}
+	return session, nil
+}
+
+func (n notify) GetAllSession(sessionId string) ([]models.SessionId, error) {
+	//TODO implement me
+	results := make([]models.SessionId, 0)
+	err := n.db.Where("id = ?", sessionId).Find(&results).Error
+	if err != nil {
+		return []models.SessionId{}, err
+	}
+	return results, nil
+}
+
+func (n notify) GetSessionById(id string) (models.SessionId, error) {
+	//TODO implement me
+	result := models.SessionId{}
+	err := n.db.Where("id = ?", id).First(&result).Error
+	if err != nil {
+		return models.SessionId{}, err
+	}
+
+	return result, nil
 }
 
 type Notify interface {
@@ -237,6 +269,9 @@ type Notify interface {
 	GetAllConfig(projectId string) ([]models.ConfigNoty, error)
 	GetConfigById(id string) (models.ConfigNoty, error)
 	DeleteConfig(id string) error
+	CreateSession(config models.SessionId) (models.SessionId, error)
+	GetAllSession(projectId string) ([]models.SessionId, error)
+	GetSessionById(id string) (models.SessionId, error)
 }
 
 func convertStringToTime(date string) (time.Time, error) {

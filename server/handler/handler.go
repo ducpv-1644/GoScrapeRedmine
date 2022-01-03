@@ -361,7 +361,7 @@ func (a *UserHandler) GetEffort(w http.ResponseWriter, r *http.Request) {
 
 	// dung chung
 	resp := response{}
-    db := a.Db
+	db := a.Db
 	var ranges string
 	week := r.URL.Query().Get("week")
 	year := r.URL.Query().Get("year")
@@ -634,7 +634,7 @@ func (a *UserHandler) CrawData(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *UserHandler) GetAllProject(w http.ResponseWriter, r *http.Request) {
-    db := a.Db
+	db := a.Db
 	dbprojects := []models.Project{}
 	db.Find(&dbprojects)
 
@@ -676,7 +676,7 @@ type MemberIssue struct {
 func (a *UserHandler) GetAllIssue(w http.ResponseWriter, r *http.Request) {
 	ranges := r.URL.Query().Get("ranges")
 	splitRanges := strings.Split(ranges, "-")
-   	 db := a.Db
+	db := a.Db
 	issue := []models.Issue{}
 	member := models.Member{}
 	var result []getAllIssueResult
@@ -776,7 +776,7 @@ type getAllMemberResult struct {
 }
 
 func (a *UserHandler) GetAllVersionProject(w http.ResponseWriter, r *http.Request) {
-    db := a.Db
+	db := a.Db
 	projectId := r.URL.Query().Get("project_id")
 
 	var dbprojects []models.VersionProject
@@ -792,7 +792,7 @@ func (a *UserHandler) GetAllMember(w http.ResponseWriter, r *http.Request) {
 	ranges := r.URL.Query().Get("ranges")
 	splitRanges := strings.Split(ranges, "-")
 
-    db := a.Db
+	db := a.Db
 	var result []getAllMemberResult
 	dbissues := []models.Issue{}
 	dbmembers := []models.Member{}
@@ -841,7 +841,7 @@ func (a *UserHandler) GetAllMember(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *UserHandler) CrawlIssueByVersion(w http.ResponseWriter, r *http.Request) {
-    	db:= a.Db;
+	db := a.Db
 	projectId := r.URL.Query().Get("project_id")
 	idProject, err := strconv.Atoi(projectId)
 	if err != nil {
@@ -859,7 +859,6 @@ func (a *UserHandler) CrawlIssueByVersion(w http.ResponseWriter, r *http.Request
 		RespondWithJSON(w, http.StatusBadRequest, resp)
 		return
 	}
-
 	err = pherusa.NewPherusa(db).CrawlIssuePherusa(uint(idProject), version)
 	if err != nil {
 		resp := response{}
@@ -877,7 +876,7 @@ func (a *UserHandler) CrawlIssueByVersion(w http.ResponseWriter, r *http.Request
 
 func (a *UserHandler) SetCurrentVersion(w http.ResponseWriter, r *http.Request) {
 	db := a.Db
-	
+
 	version := models.VersionProject{}
 	err := json.NewDecoder(r.Body).Decode(&version)
 	if err != nil {
@@ -1101,3 +1100,61 @@ func (a *UserHandler) DeleteConfig(w http.ResponseWriter, r *http.Request) {
 	resp.Code = http.StatusOK
 	RespondWithJSON(w, http.StatusOK, resp)
 }
+
+func (a *UserHandler) CreateSession(w http.ResponseWriter, r *http.Request) {
+	db := a.Db
+
+	sessionId := models.SessionId{}
+	err := json.NewDecoder(r.Body).Decode(&sessionId)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = err.Error()
+
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	createSessionId, err := Notify.NewNotify(db).CreateSession(sessionId)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadGateway
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadGateway, resp)
+		return
+	}
+
+	resp := response{
+		Result: createSessionId,
+	}
+	resp.Code = http.StatusOK
+	RespondWithJSON(w, http.StatusOK, resp)
+}
+
+func (a *UserHandler) GetSessionById(w http.ResponseWriter, r *http.Request) {
+	db := a.Db
+	idStr := mux.Vars(r)["id"]
+	if idStr == "" {
+		resp := response{}
+		resp.Code = http.StatusBadRequest
+		resp.Message = "id is invalid"
+		RespondWithJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	session, err := Notify.NewNotify(db).GetSessionById(idStr)
+	if err != nil {
+		resp := response{}
+		resp.Code = http.StatusBadGateway
+		resp.Message = err.Error()
+		RespondWithJSON(w, http.StatusBadGateway, resp)
+		return
+	}
+
+	resp := response{
+		Result: session,
+	}
+	resp.Code = http.StatusOK
+	RespondWithJSON(w, http.StatusOK, resp)
+}
+

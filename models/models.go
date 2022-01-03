@@ -102,6 +102,11 @@ type DueDateVersion struct {
 	DueDate string `json:"due_date"`
 }
 
+type SessionId struct {
+	gorm.Model
+	Session string `json:"session"`
+}
+
 func DBMigrate(db *gorm.DB) {
 	db.AutoMigrate(&User{})
 	db.AutoMigrate(&Project{})
@@ -111,4 +116,5 @@ func DBMigrate(db *gorm.DB) {
 	db.AutoMigrate(&VersionProject{})
 	db.AutoMigrate(&ConfigNoty{})
 	db.AutoMigrate(&DueDateVersion{})
+	db.AutoMigrate(&SessionId{})
 }

@@ -133,9 +133,9 @@ func (n notyReports) NotyReports() {
 			configs = append(configs, noty)
 		}
 	}
-	NotiSlack(db, "B121505", "3", "slack", "C02H99CP3H9")
-	//for _, configNoty := range configs {
-	//	//fmt.Println("configNoty", configNoty.MemberId, configNoty.ProjectId, configNoty.Service, configNoty.ChannelId)
-	//	NotiSlack(db, configNoty.MemberId, configNoty.ProjectId, configNoty.Service, configNoty.ChannelId)
-	//}
+	NotiSlack(db, "B121505", "112", "slack", "C02H99CP3H9")
+	for _, configNoty := range configs {
+		fmt.Println("configNoty", configNoty.MemberId, configNoty.ProjectId, configNoty.Service, configNoty.ChannelId)
+		//NotiSlack(db, configNoty.MemberId, configNoty.ProjectId, configNoty.Service, configNoty.ChannelId)
+	}
 }

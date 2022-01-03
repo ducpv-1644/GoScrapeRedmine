@@ -1,18 +1,18 @@
 package pherusa
 
 import (
-	"fmt"
-	"go-scrape-redmine/crawl"
-	"go-scrape-redmine/models"
-	"net/http"
-	"os"
-	"regexp"
-	"strconv"
-	"strings"
-	"time"
-
-	"github.com/gocolly/colly"
-	"gorm.io/gorm"
+    "fmt"
+    "github.com/gocolly/colly"
+    "go-scrape-redmine/config"
+    "go-scrape-redmine/crawl"
+    "go-scrape-redmine/models"
+    "gorm.io/gorm"
+    "net/http"
+    "os"
+    "regexp"
+    "strconv"
+    "strings"
+    "time"
 )
 
 func NewPherusa(db *gorm.DB) crawl.Pherusa {
@@ -26,20 +26,46 @@ type Pherusa struct {
 }
 
 func (a *Pherusa) CrawlIssuePherusa(projectId uint, version string) error {
-	c := initColly(os.Getenv("HOMEPAGE"))
 
 	project := models.Project{}
 	err := a.db.First(&project, projectId).Error
 	if err != nil {
 		return err
 	}
-	projectName := strings.ReplaceAll(project.Prefix, "/projects/", "")
-	fmt.Println("projectName",projectName)
-	CrawlIssue(c, a.db, projectName, version)
-	//CrawlDueDateVersion(c, a.db, projectName)
-	err = a.CreateVersion(version, projectId)
-	if err != nil {
-		return err
+
+	var cookies []*http.Cookie
+	var cookie *http.Cookie
+	var sessionId = [2]string{"62763d83d60df722e5bc9d462609d63d", "1ea15e2ff784549a4df1eea62fb62fab"}
+
+	for _, e := range sessionId {
+		cookie = &http.Cookie{
+			Name:     os.Getenv("NAME_COOKIE"),
+			Value:    e,
+			Path:     "/",
+			Domain:   os.Getenv("DOMAIN"),
+			Secure:   true,
+			HttpOnly: true,
+		}
+		cookies = append(cookies, cookie)
+	}
+	for i, _ := range cookies {
+		var c = colly.NewCollector(
+			colly.AllowedDomains(os.Getenv("DOMAIN")),
+		)
+		c.SetRequestTimeout(5000 * time.Second)
+		fmt.Println("cookies", []*http.Cookie{cookies[i]})
+		if err := c.SetCookies(os.Getenv("HOMEPAGE"), []*http.Cookie{cookies[i]}); err != nil {
+			fmt.Println("Errors: have errors from cookies", err)
+		}
+		// code
+		projectName := strings.ReplaceAll(project.Prefix, "/projects/", "")
+		fmt.Println("projectName", projectName)
+		CrawlIssue(c, a.db, projectName, version)
+		//CrawlDueDateVersion(c, a.db, projectName)
+		err = a.CreateVersion(version, projectId)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -64,26 +90,39 @@ func (a *Pherusa) CreateVersion(version string, projectId uint) error {
 }
 
 func initColly(url string) *colly.Collector {
-	c := colly.NewCollector(
-		colly.AllowedDomains(os.Getenv("DOMAIN")),
-	)
-	c.SetRequestTimeout(400 * time.Second)
+
+	config.LoadENV()
+	db := config.DBConnect()
+
 	var cookies []*http.Cookie
-	cookie := &http.Cookie{
-		Name:     os.Getenv("NAME_COOKIE"),
-		Value:    os.Getenv("VALUE_COOKIE"),
-		Path:     "/",
-		Domain:   os.Getenv("DOMAIN"),
-		Secure:   true,
-		HttpOnly: true,
-	}
-	cookies = append(cookies, cookie)
+	var cookie *http.Cookie
+	var sessionId = [2]string{"62763d83d60df722e5bc9d462609d63d", "1ea15e2ff784549a4df1eea62fb62fab"}
 
-	if err := c.SetCookies(url, cookies); err != nil {
-		fmt.Println("Errors: have errors from cookies", err)
+	for _, e := range sessionId {
+		cookie = &http.Cookie{
+			Name:     os.Getenv("NAME_COOKIE"),
+			Value:    e,
+			Path:     "/",
+			Domain:   os.Getenv("DOMAIN"),
+			Secure:   true,
+			HttpOnly: true,
+		}
+		cookies = append(cookies, cookie)
+	}
+	for i, _ := range cookies {
+		var c = colly.NewCollector(
+			colly.AllowedDomains(os.Getenv("DOMAIN")),
+		)
+		c.SetRequestTimeout(5000 * time.Second)
+		fmt.Println("cookies", []*http.Cookie{cookies[i]})
+		if err := c.SetCookies(url, []*http.Cookie{cookies[i]}); err != nil {
+			fmt.Println("Errors: have errors from cookies", err)
+		}
+		CrawlProject(c, db)
 
 	}
-	return c
+
+	return nil
 }
 
 func CrawlProject(c *colly.Collector, db *gorm.DB) {
@@ -106,10 +145,10 @@ func CrawlProject(c *colly.Collector, db *gorm.DB) {
 		}
 	})
 
-    err := c.Visit(os.Getenv("HOMEPAGE") + "/projects")
-    if err != nil {
-	return 
-    }
+	err := c.Visit(os.Getenv("HOMEPAGE") + "/projects")
+	if err != nil {
+		return
+	}
 	fmt.Println("Crwal project data finished.")
 }
 
@@ -153,20 +192,20 @@ func CrawlIssue(c *colly.Collector, db *gorm.DB, project string, version string)
 		})
 	})
 
-    err := c.Limit(&colly.LimitRule{
-	DomainGlob:  "*",
-	RandomDelay: 1 * time.Second,
-    })
-    if err != nil {
-	return 
-    }
+	err := c.Limit(&colly.LimitRule{
+		DomainGlob:  "*",
+		RandomDelay: 1 * time.Second,
+	})
+	if err != nil {
+		return
+	}
 
 	fullURL := fmt.Sprintf(os.Getenv("HOMEPAGE") + "/projects/" + project + "/issues" + getUrlFromVersion(version))
-    err = c.Visit(fullURL)
-    fmt.Println("fullURL",fullURL)
-    if err != nil {
-	return 
-    }
+	err = c.Visit(fullURL)
+	fmt.Println("fullURL", fullURL)
+	if err != nil {
+		return
+	}
 
 	fmt.Println("Crwal issue data finished.")
 }
@@ -210,22 +249,22 @@ func CrawlActivities(c *colly.Collector, db *gorm.DB) {
 		})
 	})
 
-    err := c.Limit(&colly.LimitRule{
-	DomainGlob:  "*",
-	RandomDelay: 1 * time.Second,
-    })
-    if err != nil {
-	return 
-    }
+	err := c.Limit(&colly.LimitRule{
+		DomainGlob:  "*",
+		RandomDelay: 1 * time.Second,
+	})
+	if err != nil {
+		return
+	}
 
 	c.OnRequest(func(r *colly.Request) {
 		fmt.Println("Visiting", r.URL.String())
 	})
 
-    err = c.Visit(os.Getenv("HOMEPAGE") + "/activity")
-    if err != nil {
-	return
-    }
+	err = c.Visit(os.Getenv("HOMEPAGE") + "/activity")
+	if err != nil {
+		return
+	}
 	fmt.Println("Crwal activity data finished.")
 }
 
@@ -251,19 +290,19 @@ func CrawlDueDateVersion(c *colly.Collector, db *gorm.DB, project string) {
 		})
 	})
 
-    err := c.Limit(&colly.LimitRule{
-	DomainGlob:  "*",
-	RandomDelay: 1 * time.Second,
-    })
-    if err != nil {
-	return 
-    }
+	err := c.Limit(&colly.LimitRule{
+		DomainGlob:  "*",
+		RandomDelay: 1 * time.Second,
+	})
+	if err != nil {
+		return
+	}
 
 	fullURL := fmt.Sprintf(os.Getenv("HOMEPAGE") + "/projects/" + project + "/settings")
-    err = c.Visit(fullURL)
-    if err != nil {
-	return 
-    }
+	err = c.Visit(fullURL)
+	if err != nil {
+		return
+	}
 
 	fmt.Println("Crwal due date data finished.")
 }
@@ -306,7 +345,7 @@ func getTypeIssue(t string) string {
 
 func (a *Pherusa) CrawlPherusa() {
 	fmt.Println("Cron running...crawling data.")
-	c := initColly(os.Getenv("HOMEPAGE"))
-	CrawlProject(c, a.db)
-	CrawlActivities(c, a.db)
+	initColly(os.Getenv("HOMEPAGE"))
+	//CrawlProject(c, a.db)
+	//CrawlActivities(c, a.db)
 }
