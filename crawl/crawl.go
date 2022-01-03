@@ -6,5 +6,5 @@ type Redmine interface {
 
 type Pherusa interface {
 	CrawlPherusa()
-	CrawlIssuePherusa(projectId uint, version string) error
+	CrawlIssuePherusa(projectId uint, version string ) error
 }

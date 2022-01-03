@@ -7,7 +7,6 @@ import (
     "go-scrape-redmine/Notify"
     "go-scrape-redmine/config"
     "go-scrape-redmine/crawl/pherusa"
-    Pherusa "go-scrape-redmine/crawl/pherusa"
     "go-scrape-redmine/models"
     "go-scrape-redmine/server"
 )
@@ -36,7 +35,7 @@ func main() {
 		Notify.NewNotify(db).GetReportMember("pherusa", "854")
 		return
 	} else if seed == "apiIssue" {
-		err := pherusa.NewPherusa(db).CrawlIssuePherusa(3, "854")
+		err := pherusa.NewPherusa(db).CrawlIssuePherusa(116, "885")
 		if err != nil {
 		    fmt.Println("err",err)
 			return
@@ -49,18 +48,8 @@ func main() {
 		fmt.Println("Flag seed invalid")
 		return
 	}
-
-
 	cr := cron.New()
-	//_, err := cr.AddFunc("0 15 * * *", Redmine.NewRedmine().CrawlRedmine)
-	//if err != nil {
-	//	return
-	//}
-	_, err := cr.AddFunc("0 15 * * *", Pherusa.NewPherusa(db).CrawlPherusa)
-	if err != nil {
-		return
-	}
-	_, err = cr.AddFunc("0 16 * * *", Notify.NewNotiReport(db).NotyReports)
+	_, err := cr.AddFunc("00 14 * * *", Notify.NewNotiReport(db).NotyReports)
 	if err != nil {
 		return
 	}

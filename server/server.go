@@ -1,14 +1,14 @@
 package server
 
 import (
-    "fmt"
-    "github.com/golang-jwt/jwt"
-    "github.com/gorilla/handlers"
-    "github.com/gorilla/mux"
-    "go-scrape-redmine/server/handler"
-    "gorm.io/gorm"
-    "net/http"
-    "strings"
+	"fmt"
+	"github.com/golang-jwt/jwt"
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
+	"go-scrape-redmine/server/handler"
+	"gorm.io/gorm"
+	"net/http"
+	"strings"
 )
 
 type response struct {
@@ -70,35 +70,37 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handle
 	})
 }
 
-func Run( db *gorm.DB) {
+func Run(db *gorm.DB) {
 	router := mux.NewRouter()
 	userHandler := handler.UserHandler{}
 	userHandler.Db = db
-	headersOk := handlers.AllowedHeaders([]string{"Accept", "content-type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization","Access-Control-Allow-Origin"})
+	headersOk := handlers.AllowedHeaders([]string{"Accept", "content-type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization", "Access-Control-Allow-Origin"})
 	originsOk := handlers.AllowedOrigins([]string{"*"})
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS", "DELETE"})
 
 	router.Handle("/", isAuthorized(handlerx)).Methods("GET")
 	router.HandleFunc("/signup", userHandler.SignUp).Methods("POST")
 	router.HandleFunc("/signin", userHandler.SignIn).Methods("POST")
-	router.Handle("/activity", isAuthorized(userHandler.GetActivity)).Methods("GET")
-	router.Handle("/effort", isAuthorized(userHandler.GetEffort)).Methods("GET")
+	//router.Handle("/activity", isAuthorized(userHandler.GetActivity)).Methods("GET")
+	//router.Handle("/effort", isAuthorized(userHandler.GetEffort)).Methods("GET")
 	router.Handle("/crawl", isAuthorized(userHandler.CrawData)).Methods("POST")
 	router.Handle("/projects", isAuthorized(userHandler.GetAllProject)).Methods("GET")
 	// router.Handle("/members", isAuthorized(user_handler.GetAllMember)).Methods("GET")
-	router.HandleFunc("/members", userHandler.GetAllMember).Methods("GET")
-	router.Handle("/member/{id}", isAuthorized(userHandler.GetAllIssue)).Methods("GET")
+	//router.HandleFunc("/members", userHandler.GetAllMember).Methods("GET")
+	//router.Handle("/member/{id}", isAuthorized(userHandler.GetAllIssue)).Methods("GET")
 	router.Handle("/project_versions", isAuthorized(userHandler.GetAllVersionProject)).Methods("GET")
 	router.Handle("/crawl_issues", isAuthorized(userHandler.CrawlIssueByVersion)).Methods("GET")
 	router.Handle("/version_project", isAuthorized(userHandler.SetCurrentVersion)).Methods("POST")
 	router.Handle("/config", isAuthorized(userHandler.CreateConfig)).Methods("POST")
 	router.Handle("/config/{id}", isAuthorized(userHandler.UpdateConfig)).Methods("POST")
 	router.Handle("/config", isAuthorized(userHandler.GetAllConfig)).Methods("GET")
-	router.Handle("/config/{id}",isAuthorized( userHandler.GetConfigById)).Methods("GET")
-	router.Handle("/config/{id}",isAuthorized(userHandler.DeleteConfig)).Methods("DELETE")
-	fmt.Println("Server started port 8000!")
-	err := http.ListenAndServe(":8000", handlers.CORS(originsOk, headersOk, methodsOk)(router))
-	fmt.Println("err",err)
+	router.Handle("/config/{id}", isAuthorized(userHandler.GetConfigById)).Methods("GET")
+	router.Handle("/config/{id}", isAuthorized(userHandler.DeleteConfig)).Methods("DELETE")
+	router.Handle("/session", isAuthorized(userHandler.CreateSession)).Methods("POST")
+	router.Handle("/session/{id}", isAuthorized(userHandler.GetSessionById)).Methods("GET")
+	fmt.Println("Server started port 7000!")
+	err := http.ListenAndServe(":7000", handlers.CORS(originsOk, headersOk, methodsOk)(router))
+	fmt.Println("err", err)
 	if err != nil {
 		return
 	}
