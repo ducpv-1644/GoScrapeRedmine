@@ -96,8 +96,8 @@ func initColly(url string) *colly.Collector {
 
 	var cookies []*http.Cookie
 	var cookie *http.Cookie
-	var sessionId = [2]string{"62763d83d60df722e5bc9d462609d63d", "1ea15e2ff784549a4df1eea62fb62fab"}
-
+	//var sessionId = [2]string{"62763d83d60df722e5bc9d462609d63d", "1ea15e2ff784549a4df1eea62fb62fab"}
+    	sessionId := strings.Split(os.Getenv("VALUE_COOKIE"), ",")
 	for _, e := range sessionId {
 		cookie = &http.Cookie{
 			Name:     os.Getenv("NAME_COOKIE"),
